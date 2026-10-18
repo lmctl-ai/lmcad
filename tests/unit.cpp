@@ -15,6 +15,12 @@ void check(bool ok,const char* what){if(!ok)throw std::runtime_error(what);}
 int main(int argc,char** argv){try{
  if(argc!=2)throw std::runtime_error("usage: lmcad-unit OUTPUT_DIR");
  std::string dir=argv[1];
+ lmcad::Shape huge;huge.mesh=lmcad::make_box(2,2,2);huge.scale={1e200,1e200,1e200};
+ bool rejected=false;try{lmcad::write_stl(dir+"/huge.stl",{huge});}catch(const std::exception&){rejected=true;}
+ check(rejected,"STL accepted coordinates outside float range");
+ huge.scale={1e308,1e308,1e308};huge.translation={1e308,0,0};rejected=false;
+ try{lmcad::transform_point(huge,{1,0,0});}catch(const std::exception&){rejected=true;}
+ check(rejected,"transform overflow was accepted");
  lmcad::Shape box;box.mesh=lmcad::make_box(1.4,1.0,.8);box.material.color={.8,.2,.1};box.translation={.1,0,0};
  lmcad::Camera camera;camera.eye={3,2,5};camera.target={0,0,0};lmcad::Light light;light.direction={-1,-1,-1};
  auto a=lmcad::render({box},camera,light,{.1,.2,.3},64,48),b=lmcad::render({box},camera,light,{.1,.2,.3},64,48);

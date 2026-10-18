@@ -88,4 +88,6 @@ out="$(build/lmcad --dsl "$WORK/no-camera.dslb" --schema schema/lmcad.dsl.json 2
 set -e
 [ "$code" = 3 ] && [[ "$out" == *"render requires a camera"* ]] || fail "missing camera not refused (exit $code): $out"
 ok "host validation requires a camera (exit 3)"
+python3 tests/refusals.py "$WORK"
+ok "compiled DSL numeric and image-limit refusals"
 echo "PASS: $pass checks"
