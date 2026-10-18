@@ -22,12 +22,13 @@ void finite(double x,const char* name){if(!std::isfinite(x))throw dslvm::Error(s
 void positive(double x,const char* name){finite(x,name);if(x<=0)throw dslvm::Error(std::string(name)+" must be positive");}
 void color_range(double x,const char* name){finite(x,name);if(x<0||x>1)throw dslvm::Error(std::string(name)+" must be between 0 and 1");}
 lmcad::Vec3 vec(const Args& a,size_t i){return {a[i].f,a[i+1].f,a[i+2].f};}
+lmcad::Shape make_shape(lmcad::Mesh mesh,const lmcad::Material& material){lmcad::Shape s;s.mesh=std::move(mesh);s.material=material;return s;}
 void register_host(dslvm::Registry& r,Host& h){
   r.context("scene","Scene");
   r.function("material",0,[&h](Args&){return h.hold(h.materials,"Material",lmcad::Material{});});
-  r.method("Scene","box",4,[&h](void*,Args& a){for(int i=0;i<3;i++)positive(a[i].f,"box dimension");return h.hold(h.shapes,"Shape",lmcad::Shape{lmcad::make_box(a[0].f,a[1].f,a[2].f),*static_cast<lmcad::Material*>(a[3].obj)});});
-  r.method("Scene","sphere",2,[&h](void*,Args& a){positive(a[0].f,"sphere radius");return h.hold(h.shapes,"Shape",lmcad::Shape{lmcad::make_sphere(a[0].f),*static_cast<lmcad::Material*>(a[1].obj)});});
-  r.method("Scene","cylinder",3,[&h](void*,Args& a){positive(a[0].f,"cylinder radius");positive(a[1].f,"cylinder height");return h.hold(h.shapes,"Shape",lmcad::Shape{lmcad::make_cylinder(a[0].f,a[1].f),*static_cast<lmcad::Material*>(a[2].obj)});});
+  r.method("Scene","box",4,[&h](void*,Args& a){for(int i=0;i<3;i++)positive(a[i].f,"box dimension");return h.hold(h.shapes,"Shape",make_shape(lmcad::make_box(a[0].f,a[1].f,a[2].f),*static_cast<lmcad::Material*>(a[3].obj)));});
+  r.method("Scene","sphere",2,[&h](void*,Args& a){positive(a[0].f,"sphere radius");return h.hold(h.shapes,"Shape",make_shape(lmcad::make_sphere(a[0].f),*static_cast<lmcad::Material*>(a[1].obj)));});
+  r.method("Scene","cylinder",3,[&h](void*,Args& a){positive(a[0].f,"cylinder radius");positive(a[1].f,"cylinder height");return h.hold(h.shapes,"Shape",make_shape(lmcad::make_cylinder(a[0].f,a[1].f),*static_cast<lmcad::Material*>(a[2].obj)));});
   r.method("Scene","camera",7,[&h](void*,Args& a){for(auto& x:a)finite(x.f,"camera argument");if(a[0].f<=0||a[0].f>=179)throw dslvm::Error("camera field of view must be between 0 and 179 degrees");h.camera={a[0].f,vec(a,1),vec(a,4),.01,10000};try{lmcad::normalized(h.camera.target-h.camera.eye);lmcad::normalized(lmcad::cross(h.camera.target-h.camera.eye,{0,1,0}));}catch(...){throw dslvm::Error("camera eye and target must differ and view direction must not be vertical");}h.has_camera=true;return Value::object("Camera",&h.camera);});
   r.method("Scene","directional_light",4,[&h](void*,Args& a){for(auto& x:a)finite(x.f,"directional light argument");if(a[3].f<0)throw dslvm::Error("light intensity must not be negative");try{h.light={lmcad::normalized(vec(a,0)),a[3].f};}catch(...){throw dslvm::Error("light direction must be nonzero");}h.has_light=true;return Value::object("Light",&h.light);});
   auto values=[&h](){std::vector<lmcad::Shape> s;s.reserve(h.shapes.size());for(const auto& p:h.shapes)s.push_back(*p);return s;};
