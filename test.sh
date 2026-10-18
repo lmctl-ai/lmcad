@@ -31,6 +31,11 @@ assert b[:8] == b'\x89PNG\r\n\x1a\n', 'PNG signature'
 w,h=struct.unpack_from('>II',b,16)
 assert (w,h)==(640,480), f'PNG dimensions {w}x{h}'
 print('PNG signature and IHDR 640x480 verified')
+s=open('build/still-life.ppm','rb').read()
+assert s.startswith(b'P6\n64 48\n255\n'), 'PPM header'
+obj=open('build/still-life.obj').read()
+assert obj.count('\nv ') >= 3 and '\nf ' in obj, 'OBJ vertices/faces'
+print('PPM header and OBJ vertex/face records verified')
 s=open('build/box.stl','rb').read()
 assert len(s)>=84, 'short STL'
 n=struct.unpack_from('<I',s,80)[0]
