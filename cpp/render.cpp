@@ -19,7 +19,8 @@ Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& 
     Vec3 rel[3]={p[0]-camera.eye,p[1]-camera.eye,p[2]-camera.eye};
     double z[3]={dot(rel[0],forward),dot(rel[1],forward),dot(rel[2],forward)};
     if(z[0]<=camera.near_clip||z[1]<=camera.near_clip||z[2]<=camera.near_clip||z[0]>=camera.far_clip||z[1]>=camera.far_clip||z[2]>=camera.far_clip) continue;
-    ScreenVertex v[3]; for(int i=0;i<3;i++)v[i]={w*.5+dot(rel[i],right)*focal/z[i],h*.5-dot(rel[i],up)*focal/z[i],z[i]};
+    ScreenVertex v[3]; bool finite_projection=true; for(int i=0;i<3;i++){v[i]={w*.5+dot(rel[i],right)*focal/z[i],h*.5-dot(rel[i],up)*focal/z[i],z[i]};finite_projection=finite_projection&&std::isfinite(v[i].x)&&std::isfinite(v[i].y);} if(!finite_projection)continue;
+    for(auto& q:v){q.x=std::clamp(q.x,-1000000.0,1000000.0);q.y=std::clamp(q.y,-1000000.0,1000000.0);}
     double area=(v[1].x-v[0].x)*(v[2].y-v[0].y)-(v[1].y-v[0].y)*(v[2].x-v[0].x); if(std::abs(area)<1e-12)continue;
     int minx=std::max(0,int(std::floor(std::min({v[0].x,v[1].x,v[2].x})))); int maxx=std::min(w-1,int(std::ceil(std::max({v[0].x,v[1].x,v[2].x}))));
     int miny=std::max(0,int(std::floor(std::min({v[0].y,v[1].y,v[2].y})))); int maxy=std::min(h-1,int(std::ceil(std::max({v[0].y,v[1].y,v[2].y}))));
