@@ -46,3 +46,9 @@ for bad_material in [b'\x01' + struct.pack('>i', 0), load_scene]:
     run = subprocess.run(['build/lmcad', '--dsl', str(path), '--schema', 'schema/lmcad.dsl.json'], capture_output=True, text=True)
     assert run.returncode == 3 and 'argument 4 must be Material' in run.stderr, run
 print('malformed callback argument checks passed')
+
+refuses('material-limit', 'material();\n' * 4097, 'object limit exceeded')
+refuses('shape-limit', 'let mat = material();\n' + 'scene.box(1.0, 1.0, 1.0, mat);\n' * 4097, 'object limit exceeded')
+print('scene allocation limit checks passed')
+
+refuses('name-limit', shape + ' s.name("' + 'x' * 1025 + '");', 'shape name exceeds')

@@ -15,7 +15,7 @@ struct Host {
   lmcad::Light light;
   lmcad::Color background{.08,.09,.12};
   bool has_camera=false, has_light=false;
-  template<class T> Value hold(std::vector<std::unique_ptr<T>>& arena,const char* type,T value){arena.push_back(std::make_unique<T>(std::move(value)));return Value::object(type,arena.back().get());}
+  template<class T> Value hold(std::vector<std::unique_ptr<T>>& arena,const char* type,T value){if(arena.size()>=4096)throw dslvm::Error(std::string(type)+" object limit exceeded (4096)");arena.push_back(std::make_unique<T>(std::move(value)));return Value::object(type,arena.back().get());}
 };
 template<class T> T* self(void* p){return static_cast<T*>(p);}
 void finite(double x,const char* name){if(!std::isfinite(x))throw dslvm::Error(std::string(name)+" must be finite");}
@@ -57,7 +57,7 @@ void register_host(dslvm::Registry& r,Host& h){
   checked_method(r,"Shape","rotate",{"float","float","float"},[](void* p,Args& a){for(auto& x:a)finite(x.f,"rotation");auto next=self<lmcad::Shape>(p)->rotation+vec(a,0);for(double x:{next.x,next.y,next.z})finite(x,"accumulated rotation");self<lmcad::Shape>(p)->rotation=next;return Value::object("Shape",p);});
   checked_method(r,"Shape","scale",{"float","float","float"},[](void* p,Args& a){for(auto& x:a)positive(std::abs(x.f),"scale magnitude");auto* s=self<lmcad::Shape>(p);auto next=lmcad::Vec3{s->scale.x*a[0].f,s->scale.y*a[1].f,s->scale.z*a[2].f};for(double x:{next.x,next.y,next.z})positive(std::abs(x),"accumulated scale magnitude");s->scale=next;return Value::object("Shape",p);});
   checked_method(r,"Shape","visible",{"bool"},[](void* p,Args& a){self<lmcad::Shape>(p)->visible=a[0].b;return Value::object("Shape",p);});
-  checked_method(r,"Shape","name",{"string"},[](void* p,Args& a){self<lmcad::Shape>(p)->name=a[0].s;return Value::object("Shape",p);});
+  checked_method(r,"Shape","name",{"string"},[](void* p,Args& a){if(a[0].s.size()>1024)throw dslvm::Error("shape name exceeds 1024 bytes");self<lmcad::Shape>(p)->name=a[0].s;return Value::object("Shape",p);});
   checked_method(r,"Camera","look_at",{"float","float","float","float","float","float"},[&h](void* p,Args& a){for(auto& x:a)finite(x.f,"camera look_at argument");auto* c=self<lmcad::Camera>(p);c->eye=vec(a,0);c->target=vec(a,3);try{lmcad::normalized(c->target-c->eye);lmcad::normalized(lmcad::cross(c->target-c->eye,{0,1,0}));}catch(...){throw dslvm::Error("camera eye and target must differ and view direction must not be vertical");}return Value::object("Camera",p);});
   checked_method(r,"Camera","clipping",{"float","float"},[](void* p,Args& a){positive(a[0].f,"near clipping plane");positive(a[1].f,"far clipping plane");if(a[1].f<=a[0].f)throw dslvm::Error("far clipping plane must be greater than near clipping plane");auto* c=self<lmcad::Camera>(p);c->near_clip=a[0].f;c->far_clip=a[1].f;return Value::object("Camera",p);});
   checked_method(r,"Material","color",{"float","float","float"},[](void* p,Args& a){for(int i=0;i<3;i++)color_range(a[i].f,"material color channel");self<lmcad::Material>(p)->color={a[0].f,a[1].f,a[2].f};return Value::object("Material",p);});
