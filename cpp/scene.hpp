@@ -44,6 +44,7 @@ struct Image {
 Mesh make_box(double x, double y, double z);
 Mesh make_sphere(double radius, int segments=20, int rings=12);
 Mesh make_cylinder(double radius, double height, int segments=24);
+Triangle transform_triangle(const Shape& shape, const Triangle& triangle);
 Vec3 transform_point(const Shape& shape, Vec3 point);
 std::vector<Triangle> world_triangles(const std::vector<Shape>& shapes);
 }

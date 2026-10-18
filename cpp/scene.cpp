@@ -1,5 +1,6 @@
 #include "scene.hpp"
 #include <cmath>
+#include <utility>
 #include <stdexcept>
 
 namespace lmcad {
@@ -36,9 +37,14 @@ Vec3 transform_point(const Shape& s,Vec3 p) {
     throw std::runtime_error("transformed coordinate must be finite");
   return p;
 }
+Triangle transform_triangle(const Shape& s,const Triangle& t) {
+  Triangle out{transform_point(s,t.a),transform_point(s,t.b),transform_point(s,t.c)};
+  if ((s.scale.x<0) ^ (s.scale.y<0) ^ (s.scale.z<0)) std::swap(out.b,out.c);
+  return out;
+}
 std::vector<Triangle> world_triangles(const std::vector<Shape>& shapes) {
   std::vector<Triangle> out; size_t n=0; for(const auto& s:shapes) if(s.visible)n+=s.mesh.triangles.size(); out.reserve(n);
-  for(const auto& s:shapes) if(s.visible) for(const auto& t:s.mesh.triangles) out.push_back({transform_point(s,t.a),transform_point(s,t.b),transform_point(s,t.c)});
+  for(const auto& s:shapes) if(s.visible) for(const auto& t:s.mesh.triangles) out.push_back(transform_triangle(s,t));
   return out;
 }
 }

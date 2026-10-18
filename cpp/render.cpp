@@ -15,7 +15,8 @@ Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& 
   Vec3 forward=normalized(camera.target-camera.eye), right=normalized(cross(forward,{0,1,0})), up=normalized(cross(right,forward));
   double focal=(0.5*h)/std::tan(camera.fov_degrees*std::acos(-1.0)/360.0); Vec3 tolight=normalized(light.direction*-1.0);
   for(const auto& shape:shapes) if(shape.visible) for(const auto& local:shape.mesh.triangles) {
-    Vec3 p[3]={transform_point(shape,local.a),transform_point(shape,local.b),transform_point(shape,local.c)};
+    auto triangle=transform_triangle(shape,local);
+    Vec3 p[3]={triangle.a,triangle.b,triangle.c};
     Vec3 rel[3]={p[0]-camera.eye,p[1]-camera.eye,p[2]-camera.eye};
     double z[3]={dot(rel[0],forward),dot(rel[1],forward),dot(rel[2],forward)};
     if(z[0]<=camera.near_clip||z[1]<=camera.near_clip||z[2]<=camera.near_clip||z[0]>=camera.far_clip||z[1]>=camera.far_clip||z[2]>=camera.far_clip) continue;

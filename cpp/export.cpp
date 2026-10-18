@@ -16,11 +16,11 @@ void f32(std::ofstream& f,double value,const std::string& p){if(!std::isfinite(v
 void write_stl(const std::string& path,const std::vector<Shape>& shapes){
   std::ofstream f(path,std::ios::binary);if(!f)throw std::runtime_error("cannot open output file '"+path+"'");char header[80]={};const char* tag="lmcad binary STL";std::memcpy(header,tag,std::strlen(tag));write_bytes(f,header,80,path);
   uint64_t count=0;for(const auto& s:shapes)if(s.visible)count+=s.mesh.triangles.size();if(count>UINT32_MAX)throw std::runtime_error("STL triangle count exceeds format limit");le32(f,uint32_t(count),path);
-  for(const auto& s:shapes)if(s.visible)for(const auto& t:s.mesh.triangles){Vec3 a=transform_point(s,t.a),b=transform_point(s,t.b),c=transform_point(s,t.c),n{};try{n=normalized(cross(b-a,c-a));}catch(...){} f32(f,n.x,path);f32(f,n.y,path);f32(f,n.z,path);for(Vec3 v:{a,b,c}){f32(f,v.x,path);f32(f,v.y,path);f32(f,v.z,path);}le16(f,0,path);}
+  for(const auto& s:shapes)if(s.visible)for(const auto& t:s.mesh.triangles){auto world=transform_triangle(s,t);Vec3 a=world.a,b=world.b,c=world.c,n{};try{n=normalized(cross(b-a,c-a));}catch(...){} f32(f,n.x,path);f32(f,n.y,path);f32(f,n.z,path);for(Vec3 v:{a,b,c}){f32(f,v.x,path);f32(f,v.y,path);f32(f,v.z,path);}le16(f,0,path);}
 }
 void write_obj(const std::string& path,const std::vector<Shape>& shapes){
   std::ofstream f(path);if(!f)throw std::runtime_error("cannot open output file '"+path+"'");size_t index=1;
-  for(const auto& s:shapes)if(s.visible){f<<"o "<<(s.name.empty()?"shape":s.name)<<"\n";for(const auto& t:s.mesh.triangles)for(Vec3 v:{t.a,t.b,t.c}){v=transform_point(s,v);f<<"v "<<v.x<<' '<<v.y<<' '<<v.z<<'\n';}for(size_t i=0;i<s.mesh.triangles.size();i++){f<<"f "<<index<<' '<<index+1<<' '<<index+2<<'\n';index+=3;}}
+  for(const auto& s:shapes)if(s.visible){f<<"o "<<(s.name.empty()?"shape":s.name)<<"\n";for(const auto& t:s.mesh.triangles){auto world=transform_triangle(s,t);for(Vec3 v:{world.a,world.b,world.c}){f<<"v "<<v.x<<' '<<v.y<<' '<<v.z<<'\n';}}for(size_t i=0;i<s.mesh.triangles.size();i++){f<<"f "<<index<<' '<<index+1<<' '<<index+2<<'\n';index+=3;}}
   if(!f)throw std::runtime_error("failed writing output file '"+path+"'");
 }
 }

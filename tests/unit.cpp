@@ -15,6 +15,14 @@ void check(bool ok,const char* what){if(!ok)throw std::runtime_error(what);}
 int main(int argc,char** argv){try{
  if(argc!=2)throw std::runtime_error("usage: lmcad-unit OUTPUT_DIR");
  std::string dir=argv[1];
+ for(auto mesh:{lmcad::make_box(2,2,2),lmcad::make_sphere(1),lmcad::make_cylinder(1,2)}) {
+   lmcad::Shape shape;shape.mesh=mesh;
+   for(auto scale:{lmcad::Vec3{1,1,1},lmcad::Vec3{-1,1,1},lmcad::Vec3{-1,-1,1}}) {
+     shape.scale=scale;
+     for(auto t:lmcad::world_triangles({shape}))
+       check(lmcad::dot(lmcad::cross(t.b-t.a,t.c-t.a),(t.a+t.b+t.c)/3)>0,"primitive/reflected winding points inward");
+   }
+ }
  lmcad::Shape huge;huge.mesh=lmcad::make_box(2,2,2);huge.scale={1e200,1e200,1e200};
  bool rejected=false;try{lmcad::write_stl(dir+"/huge.stl",{huge});}catch(const std::exception&){rejected=true;}
  check(rejected,"STL accepted coordinates outside float range");
