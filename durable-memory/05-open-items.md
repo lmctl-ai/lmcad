@@ -1,6 +1,6 @@
 # Open items
 
-1. Add proper near/far triangle clipping and a configurable camera up vector; add perspective edge-case fixtures.
+1. Add a configurable camera up vector and expand perspective edge-case fixtures.
 2. Decide whether to implement lightweight mesh CSG, or make OpenCASCADE a separately evaluated optional backend if robust CAD Boolean operations become a requirement.
 3. Decide whether a compressed PNG implementation is worth the added code/dependency cost. Stored DEFLATE currently keeps the binary self-contained and deterministic at the cost of larger files.
 4. Use material roughness in shading or remove it from the next schema version until the renderer supports it. Define whether material handles should remain live references instead of being copied when a shape is created.

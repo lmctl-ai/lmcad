@@ -23,6 +23,17 @@ int main(int argc,char** argv){try{
        check(lmcad::dot(lmcad::cross(t.b-t.a,t.c-t.a),(t.a+t.b+t.c)/3)>0,"primitive/reflected winding points inward");
    }
  }
+ lmcad::Camera clipcam;clipcam.eye={0,0,0};clipcam.target={0,0,-1};clipcam.near_clip=1;clipcam.far_clip=4;
+ lmcad::Shape crossing;crossing.mesh.triangles={{{-1,-1,-2},{1,-1,-2},{0,1,-.5}}};
+ auto visible=[&](const lmcad::Shape& shape){auto im=lmcad::render({shape},clipcam,lmcad::Light{}, {0,0,0},32,32);size_t n=0;for(auto c:im.rgb)n+=c!=0;return n;};
+ check(visible(crossing)>0,"near-plane crossing disappeared");
+ crossing.mesh.triangles[0].c.z=-5;check(visible(crossing)>0,"far-plane crossing disappeared");
+ crossing.mesh.triangles={{{-1e8,-1e8,-2},{1e8,-1e8,-2},{0,1e8,-2}}};
+ check(visible(crossing)==32*32*3,"large offscreen triangle failed to cover viewport");
+ lmcad::Shape front=crossing,back=crossing;front.material.color={1,0,0};back.material.color={0,1,0};back.translation={0,0,-1};
+ auto frontFirst=lmcad::render({front,back},clipcam,{}, {0,0,0},32,32);
+ auto backFirst=lmcad::render({back,front},clipcam,{}, {0,0,0},32,32);
+ check(frontFirst.rgb==backFirst.rgb && frontFirst.rgb[0]>0 && frontFirst.rgb[1]==0,"depth depends on triangle order");
  lmcad::Shape huge;huge.mesh=lmcad::make_box(2,2,2);huge.scale={1e200,1e200,1e200};
  bool rejected=false;try{lmcad::write_stl(dir+"/huge.stl",{huge});}catch(const std::exception&){rejected=true;}
  check(rejected,"STL accepted coordinates outside float range");
