@@ -2,6 +2,7 @@
 #include "scene.hpp"
 #include <string>
 namespace lmcad {
+void validate_output_path(const std::string& path);
 Image render(const std::vector<Shape>& shapes, const Camera& camera, const Light& light, Color background, int width, int height);
 void write_png(const std::string& path, const Image& image);
 void write_ppm(const std::string& path, const Image& image);

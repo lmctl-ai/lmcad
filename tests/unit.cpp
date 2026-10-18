@@ -54,6 +54,16 @@ int main(int argc,char** argv){try{
  precise.name="bad\nf 999 999 999\r\n#";lmcad::write_obj(dir+"/name.obj",{precise});
  auto named=read(dir+"/name.obj");std::string namedtext(named.begin(),named.end());
  check(namedtext.find("\nf 999")==std::string::npos,"OBJ object name injected a face record");
+ for(int format=0;format<4;format++) {
+   std::string path=dir+"/nul";path.push_back('\0');path+="ignored";
+   bool failed=false;try {
+     if(format==0)lmcad::write_png(path,{1,1,{1,2,3}});
+     if(format==1)lmcad::write_ppm(path,{1,1,{1,2,3}});
+     if(format==2)lmcad::write_stl(path,{});
+     if(format==3)lmcad::write_obj(path,{});
+   }catch(const std::exception&){failed=true;}
+   check(failed,"output path silently truncated at NUL");
+ }
  lmcad::Shape huge;huge.mesh=lmcad::make_box(2,2,2);huge.scale={1e200,1e200,1e200};
  bool rejected=false;try{lmcad::write_stl(dir+"/huge.stl",{huge});}catch(const std::exception&){rejected=true;}
  check(rejected,"STL accepted coordinates outside float range");

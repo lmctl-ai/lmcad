@@ -7,12 +7,15 @@
 #include <vector>
 
 namespace lmcad {
+void validate_output_path(const std::string& path){
+  if(path.empty()||path.find('\0')!=std::string::npos)throw std::runtime_error("output path must be nonempty and contain no NUL bytes");
+}
 namespace {
 void put32(std::vector<unsigned char>& o,uint32_t v){o.push_back(v>>24);o.push_back(v>>16);o.push_back(v>>8);o.push_back(v);}
 uint32_t crc32(const unsigned char* p,size_t n){uint32_t c=0xffffffffu;for(size_t i=0;i<n;i++){c^=p[i];for(int b=0;b<8;b++)c=(c>>1)^(0xedb88320u&uint32_t(-int(c&1)));}return c^0xffffffffu;}
 uint32_t adler32(const unsigned char* p,size_t n){uint32_t a=1,b=0;for(size_t i=0;i<n;i++){a=(a+p[i])%65521;b=(b+a)%65521;}return (b<<16)|a;}
 void chunk(std::vector<unsigned char>& out,const char* type,const std::vector<unsigned char>& data){put32(out,uint32_t(data.size()));size_t begin=out.size();for(int i=0;i<4;i++)out.push_back(type[i]);out.insert(out.end(),data.begin(),data.end());put32(out,crc32(out.data()+begin,out.size()-begin));}
-void save(const std::string& path,const std::vector<unsigned char>& b){std::ofstream f(path,std::ios::binary);if(!f)throw std::runtime_error("cannot open output file '"+path+"'");f.write(reinterpret_cast<const char*>(b.data()),std::streamsize(b.size()));f.close();if(!f)throw std::runtime_error("failed writing output file '"+path+"'");}
+void save(const std::string& path,const std::vector<unsigned char>& b){validate_output_path(path);std::ofstream f(path,std::ios::binary);if(!f)throw std::runtime_error("cannot open output file '"+path+"'");f.write(reinterpret_cast<const char*>(b.data()),std::streamsize(b.size()));f.close();if(!f)throw std::runtime_error("failed writing output file '"+path+"'");}
 }
 void write_png(const std::string& path,const Image& im){
   if(im.width<=0||im.height<=0||im.rgb.size()!=size_t(im.width)*im.height*3)throw std::runtime_error("invalid image buffer");
