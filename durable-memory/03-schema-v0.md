@@ -5,7 +5,7 @@ This is a compact schema sketch in the same `dsl.schema: 1` JSON form as `lmor-d
 ```json
 {
   "dsl.schema": 1,
-  "name": "lmcad-v0",
+  "name": "lmcad",
   "types": {
     "Scene": { "methods": {
       "box": { "params": ["float", "float", "float", "Material"], "returns": "Shape" },
