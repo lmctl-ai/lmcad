@@ -10,6 +10,11 @@
 
 namespace lmcad {
 namespace {
+std::string obj_name(std::string name){
+  if(name.empty())return "shape";
+  for(char& c:name)if(static_cast<unsigned char>(c)<=32||c=='#'||c=='\\')c='_';
+  return name;
+}
 void write_bytes(std::ofstream& f,const void* p,size_t n,const std::string& path){f.write(static_cast<const char*>(p),std::streamsize(n));if(!f)throw std::runtime_error("failed writing output file '"+path+"'");}
 void le32(std::ofstream& f,uint32_t x,const std::string& p){unsigned char b[4]={static_cast<unsigned char>(x),static_cast<unsigned char>(x>>8),static_cast<unsigned char>(x>>16),static_cast<unsigned char>(x>>24)};write_bytes(f,b,4,p);}
 void le16(std::ofstream& f,uint16_t x,const std::string& p){unsigned char b[2]={static_cast<unsigned char>(x),static_cast<unsigned char>(x>>8)};write_bytes(f,b,2,p);}
@@ -23,7 +28,7 @@ void write_stl(const std::string& path,const std::vector<Shape>& shapes){
 }
 void write_obj(const std::string& path,const std::vector<Shape>& shapes){
   std::ofstream f(path);if(!f)throw std::runtime_error("cannot open output file '"+path+"'");f.imbue(std::locale::classic());f<<std::setprecision(std::numeric_limits<double>::max_digits10);size_t index=1;
-  for(const auto& s:shapes)if(s.visible){f<<"o "<<(s.name.empty()?"shape":s.name)<<"\n";for(const auto& t:s.mesh.triangles){auto world=transform_triangle(s,t);for(Vec3 v:{world.a,world.b,world.c}){f<<"v "<<v.x<<' '<<v.y<<' '<<v.z<<'\n';}}for(size_t i=0;i<s.mesh.triangles.size();i++){f<<"f "<<index<<' '<<index+1<<' '<<index+2<<'\n';index+=3;}}
+  for(const auto& s:shapes)if(s.visible){f<<"o "<<obj_name(s.name)<<"\n";for(const auto& t:s.mesh.triangles){auto world=transform_triangle(s,t);for(Vec3 v:{world.a,world.b,world.c}){f<<"v "<<v.x<<' '<<v.y<<' '<<v.z<<'\n';}}for(size_t i=0;i<s.mesh.triangles.size();i++){f<<"f "<<index<<' '<<index+1<<' '<<index+2<<'\n';index+=3;}}
   f.close();if(!f)throw std::runtime_error("failed writing output file '"+path+"'");
 }
 }

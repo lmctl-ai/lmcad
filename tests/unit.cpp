@@ -51,6 +51,9 @@ int main(int argc,char** argv){try{
  auto objbytes=read(dir+"/precise.obj");std::istringstream obj(std::string(objbytes.begin(),objbytes.end()));
  std::string line;std::getline(obj,line);std::getline(obj,line);std::istringstream vertex(line);char record;double vx;vertex>>record>>vx;
  check(record=='v'&&vx==10000000.25,"OBJ rounded away geometry detail");
+ precise.name="bad\nf 999 999 999\r\n#";lmcad::write_obj(dir+"/name.obj",{precise});
+ auto named=read(dir+"/name.obj");std::string namedtext(named.begin(),named.end());
+ check(namedtext.find("\nf 999")==std::string::npos,"OBJ object name injected a face record");
  lmcad::Shape huge;huge.mesh=lmcad::make_box(2,2,2);huge.scale={1e200,1e200,1e200};
  bool rejected=false;try{lmcad::write_stl(dir+"/huge.stl",{huge});}catch(const std::exception&){rejected=true;}
  check(rejected,"STL accepted coordinates outside float range");
