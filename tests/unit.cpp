@@ -34,6 +34,17 @@ int main(int argc,char** argv){try{
  auto frontFirst=lmcad::render({front,back},clipcam,{}, {0,0,0},32,32);
  auto backFirst=lmcad::render({back,front},clipcam,{}, {0,0,0},32,32);
  check(frontFirst.rgb==backFirst.rgb && frontFirst.rgb[0]>0 && frontFirst.rgb[1]==0,"depth depends on triangle order");
+ if(std::ifstream("/dev/full").good()) {
+   for(int format=0;format<4;format++) {
+     bool failed=false;try {
+       if(format==0)lmcad::write_png("/dev/full",{1,1,{1,2,3}});
+       if(format==1)lmcad::write_ppm("/dev/full",{1,1,{1,2,3}});
+       if(format==2)lmcad::write_stl("/dev/full",{});
+       if(format==3)lmcad::write_obj("/dev/full",{front});
+     }catch(const std::exception&){failed=true;}
+     check(failed,"buffered output failure was not reported");
+   }
+ }
  lmcad::Shape huge;huge.mesh=lmcad::make_box(2,2,2);huge.scale={1e200,1e200,1e200};
  bool rejected=false;try{lmcad::write_stl(dir+"/huge.stl",{huge});}catch(const std::exception&){rejected=true;}
  check(rejected,"STL accepted coordinates outside float range");
