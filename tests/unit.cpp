@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iterator>
 #include <string>
+#include <sstream>
 #include <vector>
 namespace {
 uint32_t crc(const unsigned char* p,size_t n){uint32_t c=0xffffffffu;for(size_t i=0;i<n;i++){c^=p[i];for(int b=0;b<8;b++)c=(c>>1)^(0xedb88320u&uint32_t(-int(c&1)));}return c^0xffffffffu;}
@@ -45,6 +46,11 @@ int main(int argc,char** argv){try{
      check(failed,"buffered output failure was not reported");
    }
  }
+ lmcad::Shape precise;precise.mesh.triangles={{{10000000.25,0,0},{10000000.75,0,0},{10000000.25,1,0}}};
+ lmcad::write_obj(dir+"/precise.obj",{precise});
+ auto objbytes=read(dir+"/precise.obj");std::istringstream obj(std::string(objbytes.begin(),objbytes.end()));
+ std::string line;std::getline(obj,line);std::getline(obj,line);std::istringstream vertex(line);char record;double vx;vertex>>record>>vx;
+ check(record=='v'&&vx==10000000.25,"OBJ rounded away geometry detail");
  lmcad::Shape huge;huge.mesh=lmcad::make_box(2,2,2);huge.scale={1e200,1e200,1e200};
  bool rejected=false;try{lmcad::write_stl(dir+"/huge.stl",{huge});}catch(const std::exception&){rejected=true;}
  check(rejected,"STL accepted coordinates outside float range");

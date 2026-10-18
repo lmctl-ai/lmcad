@@ -4,6 +4,8 @@
 #include <cstring>
 #include <fstream>
 #include <limits>
+#include <iomanip>
+#include <locale>
 #include <stdexcept>
 
 namespace lmcad {
@@ -20,7 +22,7 @@ void write_stl(const std::string& path,const std::vector<Shape>& shapes){
   f.close();if(!f)throw std::runtime_error("failed writing output file '"+path+"'");
 }
 void write_obj(const std::string& path,const std::vector<Shape>& shapes){
-  std::ofstream f(path);if(!f)throw std::runtime_error("cannot open output file '"+path+"'");size_t index=1;
+  std::ofstream f(path);if(!f)throw std::runtime_error("cannot open output file '"+path+"'");f.imbue(std::locale::classic());f<<std::setprecision(std::numeric_limits<double>::max_digits10);size_t index=1;
   for(const auto& s:shapes)if(s.visible){f<<"o "<<(s.name.empty()?"shape":s.name)<<"\n";for(const auto& t:s.mesh.triangles){auto world=transform_triangle(s,t);for(Vec3 v:{world.a,world.b,world.c}){f<<"v "<<v.x<<' '<<v.y<<' '<<v.z<<'\n';}}for(size_t i=0;i<s.mesh.triangles.size();i++){f<<"f "<<index<<' '<<index+1<<' '<<index+2<<'\n';index+=3;}}
   f.close();if(!f)throw std::runtime_error("failed writing output file '"+path+"'");
 }
