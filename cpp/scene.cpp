@@ -18,13 +18,13 @@ Mesh make_box(double x,double y,double z) {
 Mesh make_sphere(double r,int segments,int rings) {
   Mesh m; const double pi=std::acos(-1.0);
   auto point=[&](int i,int j){ double lat=-pi/2+pi*j/rings, lon=2*pi*i/segments; return Vec3{r*std::cos(lat)*std::cos(lon),r*std::sin(lat),r*std::cos(lat)*std::sin(lon)}; };
-  for(int j=0;j<rings;j++) for(int i=0;i<segments;i++) { Vec3 a=point(i,j),b=point(i+1,j),c=point(i+1,j+1),d=point(i,j+1); if(j>0)m.triangles.push_back({a,b,d}); if(j+1<rings)m.triangles.push_back({b,c,d}); }
+  for(int j=0;j<rings;j++) for(int i=0;i<segments;i++) { Vec3 a=point(i,j),b=point(i+1,j),c=point(i+1,j+1),d=point(i,j+1); if(j>0)m.triangles.push_back({a,d,b}); if(j+1<rings)m.triangles.push_back({b,d,c}); }
   return m;
 }
 Mesh make_cylinder(double r,double h,int n) {
   Mesh m; const double pi=std::acos(-1.0); double y=h/2;
   for(int i=0;i<n;i++){ double a=2*pi*i/n,b=2*pi*(i+1)/n; Vec3 p{r*std::cos(a),-y,r*std::sin(a)},q{r*std::cos(b),-y,r*std::sin(b)},u{q.x,y,q.z},v{p.x,y,p.z};
-    m.triangles.push_back({p,q,u});m.triangles.push_back({p,u,v});m.triangles.push_back({{0,-y,0},q,p});m.triangles.push_back({{0,y,0},v,u}); }
+    m.triangles.push_back({p,u,q});m.triangles.push_back({p,v,u});m.triangles.push_back({{0,-y,0},p,q});m.triangles.push_back({{0,y,0},u,v}); }
   return m;
 }
 Vec3 transform_point(const Shape& s,Vec3 p) {
