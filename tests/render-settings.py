@@ -25,7 +25,7 @@ for which in ['fill','key']:
 for method in ['fill_light','directional_light']:
  for args,error in [('0.0,0.0,0.0,1.0','nonzero'),('1.0,0.0,0.0,-1.0','negative'),('sqrt(-1.0),0.0,0.0,1.0','finite')]:
   run('invalid-light',f'scene.{method}({args});',error)
-for ambient in ['-0.1','1.1','sqrt(-1.0)']:
+for ambient in ['-0.1','sqrt(-1.0)']:
  run('invalid-ambient',f'scene.ambient({ambient});','ambient level')
 print('independent light handles and finite bounded lighting settings pass')
 
@@ -45,3 +45,5 @@ raw=zlib.decompress(idat);rows=[raw[y*94+1:(y+1)*94] for y in range(127)]
 assert any(any(row) for row in rows),'fit rendered nothing'
 assert not any(rows[0]+rows[-1]) and all(not any(row[:3]+row[-3:]) for row in rows),'portrait fit clips geometry'
 print('camera fit handles portrait aspect, margin, and invalid inputs')
+
+assert render('ambient-clamped','scene.ambient(2.0);')==render('ambient-one','scene.ambient(1.0);'),'ambient above one must clamp to full illumination'
