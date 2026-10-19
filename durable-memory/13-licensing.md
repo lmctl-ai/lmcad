@@ -1,6 +1,6 @@
 # 13 — Licensing and redistribution
 
-The operator selected MIT for lmcad-authored code. The exact `LICENSE` text is
+lmcad-authored code is licensed under MIT. The exact `LICENSE` text is
 copied from `lmctl-ai/lmcpp` and states `Copyright (c) 2026 Lattice Systems
 LLC`. No email address is included in the project license, README or npm
 metadata. The MIT license covers lmcad's own code and its vendored
@@ -50,7 +50,7 @@ matching relink-object archive and `OCCT-RELINKING.md`. The release job's
 OCCT recipe archive carries `LICENSE` and `THIRD_PARTY_NOTICES` too. The
 private, unpublished npm packages declare `license: MIT` and each package
 contains `LICENSE`, `THIRD_PARTY_NOTICES`, and all applicable notices. They
-remain `private: true` and must not be published yet.
+set `private: true`; the release workflow does not publish them.
 
 ## Relinking recipe
 

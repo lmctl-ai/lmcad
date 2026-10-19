@@ -172,11 +172,11 @@ LMSCRIPT_BIN="$LMSCRIPT" LMCAD_HOST="$HOST" python3 tests/multi-file.py "$WORK"
 ok "shared scene, stop-on-failure, and upfront argument validation"
 LMCAD_REAL_COMPILER="$LMSCRIPT" python3 tests/compiler-selection.py "$WORK"
 ok "compiler selection verifies v5 output capability"
-# The source adapter needs the (non-public) lmscript sources; skip without them.
-if [ -f "${LMSCRIPT_SOURCE:-$HOME/lmctl-mono/lmscript}/dsl.ts" ]; then
+# The optional source-adapter check runs only when a compiler source directory is explicitly selected.
+if [ -n "${LMSCRIPT_SOURCE:-}" ] && [ -f "$LMSCRIPT_SOURCE/dsl.ts" ]; then
   python3 tests/adapter.py "$WORK"
   ok "relocated compiler adapter parsing"
 else
-  echo "skip - relocated compiler adapter parsing (no lmscript sources; set LMSCRIPT_SOURCE)"
+  echo "skip - source adapter check (set LMSCRIPT_SOURCE to a compiler source directory)"
 fi
 echo "PASS: $pass checks"

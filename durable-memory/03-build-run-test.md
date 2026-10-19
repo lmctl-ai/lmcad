@@ -1,29 +1,44 @@
-# Build, run and test
+# Build, run, and test
 
 ## Toolchain and SDK
 
-- Checked on Linux ARM64, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1.
-- The current language/compiler/bytecode version is v5 and the schema format is v2. The examples compile with `<lmctl-mono checkout>/lmscript/dsl.ts` through `scripts/lmscript-mono.sh`; this adapter imports the real compiler and does not edit or copy it. `test.sh` prefers a PATH `lmscript` that accepts schema v2 and compiles a while-loop probe to v5 bytecode; otherwise it falls back to the adapter. `LMSCRIPT_BIN` is an optional explicit override.
-- The PATH `lmscript` available here rejects `--dsl-signatures`; all eight examples therefore used `scripts/lmscript-mono.sh`, which imports the real mono `dsl.ts`, and emitted v5 bytecode.
-- `sdk.lock` pins cpp-dsl-sdk `b8fd2858a6313ba256b25b6dd250ee2404bc6ef3` and the SHA-256 of the vendored `cpp/dslvm.hpp`. `scripts/sync-sdk.sh` resolves `origin/main` by default; `--verify` checks the copied header.
-- CMake embeds the exact schema file bytes in a generated header. `lmcad --schema --json` prints those bytes; plain `--schema` prints a short registry-derived summary with context first and members grouped by type. No external schema file is needed at runtime. `lmcad --dsl-signatures` prints the registry's canonical declarations, checked byte-for-byte against the compiler's schema output.
-- `lmcad --dsl A.dslb B.dslb` runs both programs sequentially against the same schema, registry, and host context. The removed `--schema FILE` input syntax is rejected.
-- OCCT 8.0.1 supplies BRep geometry, booleans, fillets, shelling, and meshing. All solids, including box/sphere/cylinder, use OCCT TopoDS shapes tessellated to the existing mesh. The existing in-tree renderer and PNG/PPM/STL/OBJ writers remain the output path. `TKOffset` is added to the spike 14-library closure for shelling; no OCCT exchange toolkit is linked.
+- Verified on Linux ARM64 with g++ 13.3.0, CMake 3.28.3, and Ninja 1.11.1.
+- The current compiler emits bytecode v5 against schema v2. Install `@lmctl-ai/lmctl` so `lmscript` is available on `PATH`, or
+  set `LMSCRIPT_BIN` to an explicit compatible compiler. `scripts/select-compiler.sh` probes the schema and a while-loop example;
+  it fails with an install hint if no compatible compiler is available.
+- `scripts/lmscript-source.sh` is an optional adapter for compiler-source development. It requires an explicit `LMSCRIPT_SOURCE`
+  path and imports that compiler without copying it into this repository.
+- `sdk.lock` pins the C++ runtime commit and SHA-256 of `cpp/dslvm.hpp`. `scripts/sync-sdk.sh --verify` checks the vendored file.
+- CMake embeds the exact schema bytes. `lmcad --schema --json` prints them; plain `--schema` prints a registry-derived summary.
+  `--dsl-signatures` prints canonical host declarations for comparison with compiler output.
+- `lmcad --dsl A.dslb B.dslb` runs programs in order with the same schema and host state. The old external-schema CLI form is
+  not supported.
+- OCCT 8.0.1 provides BRep geometry, booleans, fillets, shelling, and meshing. All primitives use OCCT shapes tessellated into the
+  existing mesh. In-tree writers handle PNG/PPM/STL/OBJ/APNG; OCCT exchange modules are not linked.
 
 ## Build and examples
 
-See the copyable OCCT-prefix and application commands in `README.md`. Examples include still-life PNG/PPM/OBJ, 12-facet box STL, range-loop row, 30-frame CSV keyframe tween plus APNG, plate-with-holes, hollow brick, hollow vase, scalar-colored 5x5 glyph field, separated section halves, a hollow revolved mug with an extruded loop handle, and a 36-frame APNG turntable. Renders use key/fill lighting, ambient light, scene-wide fit-camera margin, and 2x supersampling by default. Host result/error lines use the SDK JSON protocol. Argument errors return 2; bytecode load and DSL/host runtime errors return 3.
+The root README documents the OCCT prefix build, application build, CLI, and test commands. Examples cover a still life, STL,
+procedural loops, CSV tweening, practical solids, a section view, a handled mug, and a camera turntable. Rendering defaults include
+key/fill lighting, ambient light, fitted camera framing, and 2x supersampling. The output formats are PNG, PPM, STL, OBJ, and APNG.
 
-## Test results
+## Tests
 
-`./test.sh` passes **27 top-level checks** (the embedded schema test script reports its own 62 member assertions): SDK pin, native full-static build, eleven v5 compiles/runs, embedded schema byte identity, host/compiler signature parity, sequential multi-bytecode execution, PNG dimensions/pixels, 12-triangle STL, CAD STL topology/volume checks, APNG chunk order/CRC/sequence/delay/frame-count checks, extracted-frame identity, 30 distinct tween frames, raster/APNG/CAD determinism, CLI/runtime refusals, and host validation suites. The section halves sum to 576.0 BRep volume; the mug BRep volume is 357.48602721261472 and its STL is closed (tessellated volume 353.073312, within 2%). The 4.412715 volume difference is about 1.23%: the default absolute tessellation deflection is 0.1 model units, so curved faces become planar facets. This approximation can understate volume even when every mesh edge is paired and the STL is watertight; watertightness is not equality to the analytic volume. The section assertion checks the two BRep half-volumes sum to the original 576.0 (each is 288.0); translation changes neither volume. It is a separated solid-box demonstration, not a general cross-section or clipping-plane renderer.
+`./test.sh` checks SDK pinning, the native build, compilation and execution of all examples, schema/signature parity, image and CAD
+exports, APNG structure and extracted frames, deterministic output, and invalid-input refusals. The ASan/UBSan build uses
+`LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh`.
 
-PNG/APNG now use deterministic LZ77 with fixed Huffman codes, falling back to stored blocks for incompressible input. Measured before → after sizes: 720x540 mug PNG 1,167,106 → 35,457 bytes; section PNG 1,167,106 → 12,645; 30-frame 160x120 tween APNG 1,733,624 → 68,125; 36-frame turntable APNG 2,080,334 → 113,244. The earlier 3,409,389-byte tween measurement was a 59-frame multi-segment test overwriting the example; that test now uses its own temporary output. Frame delays are exactly 1/FPS, without millisecond rounding. The C++ unit parser validates all chunk CRCs, chunk and sequence structure, loop count, dimensions, frame delay, frame count, changed payloads, and exact first-frame IDAT equivalence with `build/tween-0.png`. The extraction utility was used to write and inspect tween frames 0/15/29 and turntable frames 0/18/35.
+The section example asserts that its two BRep half-volumes sum to the original 576.0. The mug BRep volume is 357.48602721261472;
+its closed STL mesh measures 353.073312, about 1.23% lower because curved faces are approximated by planar facets at the default
+0.1 model-unit tessellation deflection.
 
-The ASan+UBSan variant (`LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh`) passes all **27 checks**. All rendered examples are regenerated. The section rendering shows two offset halves in distinct colors. The mug has a readable open top and C-shaped band handle; compared with the tea-cup reference it is more angular and has a polygonal profile. Extracted tween frames show color/position change; turntable frames show camera orbit.
+The in-tree PNG/APNG writer uses deterministic LZ77 and fixed-Huffman DEFLATE, with stored blocks for incompressible data. APNG
+uses exact rational frame delays. Tests validate chunk CRCs and sequence, frame count, first-frame identity, changed frames, and
+repeatability. Full-canvas frames stream to a temporary file so memory usage does not scale with frame count.
 
-## Link checks
+## Static builds
 
-Release uses full static linking. `file build/lmcad` reports statically linked AArch64 ELF, `ldd build/lmcad` reports `not a dynamic executable`, and the reviewed binary is **26,833,576 bytes (25.6 MiB)**. The clean OCCT source build measured 15:51.52 and 395,208 KiB maximum RSS in the spike; this step reused that build for the prefix install. See `08-occt-integration.md` for operation details and BRep/build123d volume comparisons.
-
-Review validation also checks failure cleanup, exact FPS, streamed/batch byte identity, finish lifecycle, and stored/fixed DEFLATE round trips using an independent test inflater. The installed libpng decoded all 66 extracted animation frames plus the mug and section PNGs. APNG structure is checked against the [PNG Third Edition animation specification](https://www.w3.org/TR/png-3/#apng-chunks); the writer emits full-canvas source frames with no disposal, first fcTL before IDAT, and shared consecutive fcTL/fdAT sequence numbers.
+The Linux release executable is fully static; `ldd` reports `not a dynamic executable`. OCCT 8.0.1 builds from source using
+`scripts/build-occt.sh`; CI caches the installed prefix by version, configure flags, architecture, and compiler version. Linux
+release artifacts include the executable, notices, relinking instructions, and application object files. Platform-specific static
+builds for macOS and Windows remain future work.

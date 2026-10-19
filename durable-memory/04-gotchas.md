@@ -1,15 +1,27 @@
 # Gotchas and limits
 
-- **Schema bytes are part of bytecode binding.** Recompile after any schema edit; the loader rejects a bytecode/schema hash mismatch. CMake embeds the schema bytes from `schema/lmcad.dsl.json`; `lmcad --schema` is the authoritative runtime output.
-- **Schema v2 uses overload arrays.** Every function and method value is an array of `{ "params": [...], "returns": ... }` signatures, even if it has one overload. Keep the registry canonical signatures exactly aligned with compiler `--dsl-signatures` output.
-- **Compiler selection.** The test script uses a PATH `lmscript` only when it accepts the schema v2 `--dsl-signatures` command. Otherwise the adapter imports the real `~/lmctl-mono/lmscript/dsl.ts`. Do not copy that compiler into this repository.
-- **Collection convention.** Keyframes are host object handles with `len()` and `at(i)`, iterated by `for (key in keys)` or `for (i in range(0, keys.len()))`. There are no bytecode list/map values.
-- **Host checks are deliberate.** Camera is required to render. Output width/height must be positive, at most 8192 each, and at most 16,777,216 pixels total. CSV files and host-owned object collections have current per-host limits. R33/R34 do not define VM instruction, memory, or collection budgets.
-- **CSV shape.** Header fields are `t,x,y,z,r,g,b`; quoted fields and CRLF are accepted. Records are limited to 4096 bytes and files to 4096 rows; numeric fields must parse completely and be finite; times must increase, channels are in [0,1], and at least two rows are needed. The tween samples 30 frames on the first segment and 29 on each subsequent segment, sharing each boundary exactly once (both endpoints included). Segments have equal frame counts regardless of CSV time spacing.
-- **Host object lifetime.** Handles are owned by the host for one process run. Shape mutators update the existing host object, so tween scripts can reuse one shape across frames. When several bytecode files are passed in one invocation, they share this host state and run in command-line order.
-- **CAD coordinates and tessellation.** Boxes and cylinders are centered at the origin; cylinders run along Y, matching the renderer up axis. `Sketch.point(x,y)` is a 2D profile; `extrude` goes along Z and `revolve_y` turns about Y. `hollow(thickness)` removes the lowest-Y planar face; `hollow_top(thickness)` removes the highest-Y planar face. Boolean and finishing methods bake the current transform into the BRep and reset the display transform. Curved-face vertex normals are averaged across triangulation edges within a 60-degree threshold; box corners stay sharp. Ambient fill remains in the software renderer; there are no shadows, transparency or textures.
-- **PNG prioritizes self-containment.** Stored DEFLATE is valid but uncompressed, so images are larger than compressed output. Tests inspect PNG signature, IHDR, CRC-32, Adler-32, and deterministic bytes.
-- **Exports are mesh-level.** STL drops appearance; OBJ has vertices/faces but no MTL. Neither export requires a camera.
-- **OCCT static closure.** The AArch64 Release executable links 15 OCCT archives: the spike 14 plus `TKOffset` for shelling. CMake requires OCCT 8.0.1 from `LMCAD_OCCT_PREFIX`; a normal release link uses `-static`. Validate each target OS/toolchain independently. OCCT STL/STEP exchange toolkits are not linked; exports remain in-tree mesh writers.
-
-- **Boolean cost.** Repeated unions/cuts run OCCT BRep operations and then retessellate at linear deflection 0.1; prefer combining related operations before rendering. Tessellation is serial to keep output deterministic.
+- Schema bytes are part of bytecode binding. Recompile after any schema edit. CMake embeds `schema/lmcad.dsl.json` into the
+  executable.
+- Schema v2 represents each function and method as an array of overload signatures, including single-overload members. Keep
+  registry signatures aligned with compiler `--dsl-signatures` output.
+- Compiler selection requires a compatible v5 `lmscript` on `PATH` or an explicit `LMSCRIPT_BIN`. Install
+  `@lmctl-ai/lmctl` for the published compiler. The optional source adapter requires explicitly setting `LMSCRIPT_SOURCE`.
+- Collections are host object handles with methods such as `len()` and `at(i)`. Scripts iterate with range loops; bytecode has no
+  list or map value types.
+- The host validates geometry inputs, camera presence, image dimensions, frame totals, and CSV data. The VM has no execution,
+  memory, or collection budgets. A nonterminating script can run indefinitely.
+- CSV columns are `t,x,y,z,r,g,b`; quoted fields and CRLF are accepted. Records are limited to 4096 bytes and the file to 4096
+  rows. Values must parse completely and be finite, times must increase, color channels are in [0,1], and at least two rows are
+  required. Tween segments share endpoints once and use equal frame counts regardless of timestamp spacing.
+- Host object handles are owned by the process. Mutators update existing shapes, allowing scripts to reuse a shape across frames.
+  Multiple bytecode files in one invocation share host state.
+- Boxes and cylinders are centered at the origin; cylinders run along Y. `Sketch.point(x,y)` creates a 2D profile, `extrude`
+  advances along Z, and `revolve_y` revolves about Y. `hollow` removes the lowest-Y planar face; `hollow_top` removes the highest.
+  Boolean and finishing operations bake transforms into the BRep and reset display transforms.
+- Tessellation averages curved-face normals across edges within a 60-degree threshold; sharp box corners remain sharp. Shading is
+  a simple software model with ambient fill, no shadows, transparency, or textures.
+- STL omits appearance. OBJ contains vertices and faces but no MTL. Neither export requires a camera.
+- OCCT 8.0.1 is linked from 15 static archives, including `TKOffset` for shelling. The host uses in-tree mesh exporters rather
+  than OCCT exchange toolkits. Validate each target operating system and toolchain independently.
+- Repeated booleans retessellate at linear deflection 0.1. Combine related operations before rendering when possible; tessellation
+  is serial to keep output deterministic.

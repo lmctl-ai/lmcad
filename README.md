@@ -1,5 +1,9 @@
 # lmcad
 
+## Status
+
+Experimental. The native CLI, schema, and example set are evolving; bytecode v5 and schema v2 are required.
+
 `lmcad` is a headless C++ host for lmscript DSL bytecode. It embeds the exact bytes of [`schema/lmcad.dsl.json`](schema/lmcad.dsl.json), vendors the pinned header-only [`cpp-dsl-sdk`](cpp/dslvm.hpp), and uses OpenCASCADE for solid modeling. OCCT shapes are tessellated into lmcad's mesh; the in-tree rasterizer, PNG/PPM writers, and STL/OBJ exporters consume that mesh. The release executable is fully statically linked and has no runtime shared-library dependencies. The project is licensed under MIT; third-party terms and static relinking materials are listed in `THIRD_PARTY_NOTICES.md` and the release assets.
 
 ## Build OpenCASCADE once
@@ -29,7 +33,7 @@ stat -c '%s bytes' build/lmcad
 
 The verified AArch64 release binary is 26,767,080 bytes (25.5 MiB). Set `LMCAD_OCCT_PREFIX` when using a different install location.
 
-`test.sh` prefers `lmscript` on PATH when it accepts schema v2 and compiles a while-loop probe to v5 bytecode. CI installs the published npm `@lmctl-ai/lmctl@0.2.347` compiler and uses this probe; otherwise it uses `scripts/lmscript-mono.sh`, a small adapter that imports the compiler sources from a local lmscript checkout (`LMSCRIPT_SOURCE`; maintainers only, the sources are not public). Strangers: `npm i -g @lmctl-ai/lmctl`. The adapter compiles standalone `_dsl_` blocks only. Set `LMSCRIPT_BIN` to explicitly select a compiler.
+`test.sh` selects `lmscript` on `PATH` only when it accepts this schema and compiles a while-loop probe to v5 bytecode. Install the published compiler with `npm i -g @lmctl-ai/lmctl`, or set `LMSCRIPT_BIN` to an explicit v5 compiler executable. If neither is available, selection fails with an install hint. For local compiler-source development only, set `LMSCRIPT_SOURCE` to the compiler source directory and run `scripts/lmscript-source.sh`; this adapter handles standalone `_dsl_` blocks.
 
 ## CLI
 
@@ -38,8 +42,8 @@ build/lmcad --schema
 build/lmcad --schema --json > /tmp/lmcad-schema.json
 cmp schema/lmcad.dsl.json /tmp/lmcad-schema.json
 build/lmcad --dsl-signatures
-scripts/lmscript-mono.sh --dsl-signatures schema/lmcad.dsl.json
-scripts/lmscript-mono.sh examples/still-life.lms build/still-life.dslb
+lmscript --dsl-signatures schema/lmcad.dsl.json
+lmscript examples/still-life.lms build/still-life.dslb
 build/lmcad --dsl build/still-life.dslb
 ```
 
@@ -48,31 +52,31 @@ build/lmcad --dsl build/still-life.dslb
 The examples cover a lit still life, STL export, a range-loop row, CSV-driven tweening, a plate with through-holes, hollow brick with studs, hollow vase, scalar-colored glyph field, a separated two-piece section view, a handled mug, and a camera turntable. Tween and turntable produce APNG animations as well as numbered PNG frames (tween). Both animations are 160x120; tween has 30 frames at 30 FPS and turntable has 36 frames at 24 FPS. PNG and APNG use deterministic LZ77/fixed-Huffman DEFLATE (stored blocks for incompressible data). APNG uses exact rational frame delays (integer FPS from 1 through 240) and loops forever; `lmcad-apng-extract` extracts a zero-based full frame to PNG. Host limits are 240 frames, 64 million total frame pixels, and 16,777,216 pixels per frame. Frames stream to a temporary file in the destination directory; memory does not grow with frame count. `finish()` atomically replaces the destination. Omitting it discards the temporary animation when the host exits; an empty finish, second finish, or add after finish is an error. Write failures preserve the previous destination and remove temporary output. Frame-count and cumulative-pixel checks precede rendering; the renderer also checks the supersampled dimensions and pixel count before allocating. A 36-frame 1920x1080 animation exceeds the cumulative limit (74,649,600 pixels); at that resolution at most 30 frames fit, with supersampling at most 2. `fit_camera(fov, margin)` snapshots visible bounds and adapts the fitted distance to each render’s aspect ratio; FOV is vertical and margin must be at least 1. Explicit camera `look_at` or `clipping` calls disable automatic fitting. Ambient must be finite and nonnegative; values above 1 clamp to full ambient illumination. Scene settings provide key and fill lights, ambient level, and bounded 1..4 supersampling (default 2). OCCT tessellation computes smooth normals across curved faces while keeping sharp edges. Boolean operations and solid-volume assertions use the BRep geometry. To compile and run them individually:
 
 ```sh
-scripts/lmscript-mono.sh examples/still-life.lms build/still-life.dslb
-scripts/lmscript-mono.sh examples/box-stl.lms build/box-stl.dslb
-scripts/lmscript-mono.sh examples/loop-row.lms build/loop-row.dslb
-scripts/lmscript-mono.sh examples/tween.lms build/tween.dslb
+lmscript examples/still-life.lms build/still-life.dslb
+lmscript examples/box-stl.lms build/box-stl.dslb
+lmscript examples/loop-row.lms build/loop-row.dslb
+lmscript examples/tween.lms build/tween.dslb
 build/lmcad --dsl build/still-life.dslb
 build/lmcad --dsl build/box-stl.dslb
 build/lmcad --dsl build/loop-row.dslb
 build/lmcad --dsl build/tween.dslb
-scripts/lmscript-mono.sh examples/plate-with-holes.lms build/plate-with-holes.dslb
-scripts/lmscript-mono.sh examples/brick.lms build/brick.dslb
-scripts/lmscript-mono.sh examples/vase.lms build/vase.dslb
+lmscript examples/plate-with-holes.lms build/plate-with-holes.dslb
+lmscript examples/brick.lms build/brick.dslb
+lmscript examples/vase.lms build/vase.dslb
 build/lmcad --dsl build/plate-with-holes.dslb
 build/lmcad --dsl build/brick.dslb
 build/lmcad --dsl build/vase.dslb
-scripts/lmscript-mono.sh examples/glyph-field.lms build/glyph-field.dslb
+lmscript examples/glyph-field.lms build/glyph-field.dslb
 build/lmcad --dsl build/glyph-field.dslb
-scripts/lmscript-mono.sh examples/section-view.lms build/section-view.dslb
-scripts/lmscript-mono.sh examples/mug.lms build/mug.dslb
-scripts/lmscript-mono.sh examples/turntable.lms build/turntable.dslb
+lmscript examples/section-view.lms build/section-view.dslb
+lmscript examples/mug.lms build/mug.dslb
+lmscript examples/turntable.lms build/turntable.dslb
 build/lmcad --dsl build/section-view.dslb
 build/lmcad --dsl build/mug.dslb
 build/lmcad --dsl build/turntable.dslb
 ```
 
-## Checks
+## Test
 
 ```sh
 ./test.sh
@@ -96,5 +100,5 @@ This also covers the vendored `cpp/dslvm.hpp`. OCCT and copied Python reference
 examples retain their separate licenses and notices listed in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Every Linux release artifact
 includes `LICENSE`, `THIRD_PARTY_NOTICES`, the relevant full license texts, and
-OCCT relinking instructions and object files. The private npm packages declare
-MIT but remain unpublished.
+OCCT relinking instructions and object files. The npm package layouts declare MIT and `private: true`; the workflow does not
+publish them.

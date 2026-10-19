@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prefer the released npm compiler only when it proves it can emit DSL v5.
+# Select a compiler only when it proves it can emit DSL v5.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ -n "${LMSCRIPT_BIN:-}" ]]; then
@@ -27,5 +27,6 @@ PY
 then
   printf '%s\n' "$CANDIDATE"
 else
-  printf '%s\n' "$HERE/scripts/lmscript-mono.sh"
+  echo "error: no DSL v5 compiler found; install @lmctl-ai/lmctl so lmscript is on PATH, or set LMSCRIPT_BIN" >&2
+  exit 2
 fi

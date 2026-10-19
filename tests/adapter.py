@@ -7,7 +7,7 @@ import sys
 
 work = Path(sys.argv[1]) / 'relocated-clone'
 (work / 'scripts').mkdir(parents=True)
-for name in ['lmscript-mono.sh', 'lmscript-mono.mjs']:
+for name in ['lmscript-source.sh', 'lmscript-source.mjs']:
     shutil.copy2(Path('scripts') / name, work / 'scripts' / name)
 source = work / 'input.lms'
 schema = Path('schema/lmcad.dsl.json').resolve()
@@ -20,7 +20,7 @@ end _dsl_
 savedsl(p, "output.dslb");
 '''
 source.write_bytes(body.replace('\n', '\r\n').encode())
-command = [str(work / 'scripts/lmscript-mono.sh'), str(source)]
+command = [str(work / 'scripts/lmscript-source.sh'), str(source)]
 run = subprocess.run(command, cwd=work, capture_output=True, text=True)
 assert run.returncode == 0, run.stderr
 assert (work / 'output.dslb').read_bytes()[:6] == b'DSLB\x00\x05'
