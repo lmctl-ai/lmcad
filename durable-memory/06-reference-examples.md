@@ -15,7 +15,7 @@ on 2026-10-18.
   one STL, and renders a PNG with pyvista off-screen.
 - `reference/runners/run_pv.py`: runs a pyvista example with `pv.OFF_SCREEN=True`
   and turns each `Plotter.show()` into `<name>_<n>.png`. cwd = the output dir.
-- `reference/out/<name>/`: outputs. All are < 1 MB except the 1.25 MB
+- `reference/out/<name>/`: outputs. Renders of downloaded third-party datasets (pv_03/04/05) are not committed; rerun the runner to regenerate them locally. All are < 1 MB except the 1.25 MB
   `barth_sextic.gif`, which is gitignored (`reference/.gitignore`).
 
 Re-run (from a scratch dir, never from inside the repos):
@@ -62,9 +62,9 @@ light, and STL/OBJ/PNG output. 1 = trivial, 5 = needs a major subsystem.
 |---|------|---------------|----------|--------------|------------------|
 | 1 | `pv_01_geometric_objects` (00-load/create_geometric_objects.py) | 3x3 grid: cylinder, arrow, sphere, plane, line, box, cone, polygon, disc | primitive mesh generators, `subplot` grid, per-mesh colors | yes: `out/pv_01_geometric_objects/pv_01_geometric_objects_1.png` | **1**: needs cone/arrow/disc/polygon generators, multi-viewport |
 | 2 | `pv_02_boolean_operations` (01-filter/boolean_operations.py) | sphere and cube union / difference / intersection, plus a sphere-cube difference | triangulate, **mesh booleans**, edges overlay, opacity | yes: 7 PNGs `out/pv_02_boolean_operations/*_1..7.png` | **3**: robust triangle-mesh CSG |
-| 3 | `pv_03_clip_with_plane_box` (01-filter/clip_with_plane_box.py) | bunny clipped by a plane, office clipped by a box, airplane clip_surface, wavelet clip_scalar | **clip by plane / box / surface / scalar**, downloaded datasets, camera positions, subplots | yes: 5 PNGs `out/pv_03_clip_with_plane_box/*_1..5.png` | **2**: plane clip of triangles is easy; box/surface clip are moderate |
-| 4 | `pv_04_light_types` (04-lights/light_types.py) | Stanford bunny lit by a headlight, a camera light, a scene light | **Light types and positions**, smooth shading, OBJ/PLY loading | yes: 3 PNGs `out/pv_04_light_types/*_1..3.png` | **2**: >1 light type, vertex normals / smooth shading, mesh import |
-| 5 | `pv_05_glyph` (01-filter/glyph.py) | carotid artery velocity arrows; sphere normals as arrows; random-hills glyphs | threshold, **glyphs** (oriented and scaled instances), **scalar → colormap**, scalar bar, vectors | yes: 4 PNGs `out/pv_05_glyph/*_1..4.png` | **3**: instancing, per-vertex scalars + colormap LUT, scalar-bar text |
+| 3 | `pv_03_clip_with_plane_box` (01-filter/clip_with_plane_box.py) | bunny clipped by a plane, office clipped by a box, airplane clip_surface, wavelet clip_scalar | **clip by plane / box / surface / scalar**, downloaded datasets, camera positions, subplots | ran (5 PNGs); outputs not committed: derived from downloaded datasets (bunny, office, airplane) with unclear redistribution terms | **2**: plane clip of triangles is easy; box/surface clip are moderate |
+| 4 | `pv_04_light_types` (04-lights/light_types.py) | Stanford bunny lit by a headlight, a camera light, a scene light | **Light types and positions**, smooth shading, OBJ/PLY loading | ran (3 PNGs); outputs not committed: renders of the Stanford bunny dataset | **2**: >1 light type, vertex normals / smooth shading, mesh import |
+| 5 | `pv_05_glyph` (01-filter/glyph.py) | carotid artery velocity arrows; sphere normals as arrows; random-hills glyphs | threshold, **glyphs** (oriented and scaled instances), **scalar → colormap**, scalar bar, vectors | ran (4 PNGs); outputs not committed: derived from the downloaded carotid dataset | **3**: instancing, per-vertex scalars + colormap LUT, scalar-bar text |
 | 6 | `pv_06_marching_cubes` (01-filter/marching_cubes.py) | Barth sextic implicit surface; marching cubes vs flying edges; animated isovalue sweep | ImageData scalar field, **contour (marching cubes / flying edges)**, **open_gif / write_frame** animation | yes (with imageio from scratch dir): `out/pv_06_marching_cubes/pv_06_marching_cubes_{1,2}.png` + `barth_sextic.gif` (1.25 MB, gitignored) | **3**: marching cubes (~300 lines + tables), GIF encoder (or PNG frame sequence) |
 
 Other well-known examples that were considered but not run: build123d `bicycle_tire`,
