@@ -31,18 +31,7 @@ ok "8 examples compile with $COMPILER_SOURCE as bytecode v5"
 cmp schema/lmcad.dsl.json "$WORK/embedded-schema.json" || fail "embedded schema differs from source bytes"
 ok "--schema --json prints byte-identical embedded schema bytes"
 "$HOST" --schema >"$WORK/schema-summary.txt" || fail "schema summary print"
-python3 - "$WORK/schema-summary.txt" <<'PY'
-import subprocess,sys
-summary=open(sys.argv[1]).read()
-sigs=subprocess.run(['build/lmcad','--dsl-signatures'],capture_output=True,text=True,check=True).stdout.splitlines()
-missing=[]
-for line in sigs:
-  needle=line[7:] if line.startswith('method ') else line[3:] if line.startswith('fn ') else line
-  if needle not in summary: missing.append(needle)
-assert not missing, missing
-assert summary.index('context scene: Scene') < summary.index('Scene:')
-print(f'{len(sigs)} canonical members listed')
-PY
+python3 tests/schema-cli.py "$HOST"
 ok "--schema summary lists every canonical registry member"
 diff -u <("$LMSCRIPT" --dsl-signatures schema/lmcad.dsl.json) <("$HOST" --dsl-signatures) || fail "host/compiler signatures differ"
 ok "typed registry signatures match compiler schema signatures"
