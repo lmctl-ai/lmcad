@@ -16,7 +16,8 @@ while IFS= read -r line; do flags+=("$line"); done < "$FLAGS_FILE"
 NICE=(nice -n 10)
 if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* ]]; then NICE=(); fi
 "${NICE[@]}" cmake -S "$SRC" -B "$BUILD" -G Ninja "${flags[@]}" "-DCMAKE_INSTALL_PREFIX=$PREFIX"
-if [[ -x /usr/bin/time ]]; then
+# BSD time (macOS) takes no -f; git-bash has no /usr/bin/time at all.
+if /usr/bin/time -f %e true >/dev/null 2>&1; then
   /usr/bin/time -f 'OCCT build wall=%E max-rss-kb=%M' "${NICE[@]}" cmake --build "$BUILD" --parallel 3
 else
   "${NICE[@]}" cmake --build "$BUILD" --parallel 3
