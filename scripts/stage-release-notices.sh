@@ -21,8 +21,11 @@ cp "$ROOT/THIRD_PARTY_NOTICES.md" "$DIST/THIRD_PARTY_NOTICES"
 cp "$ROOT/licenses/Apache-2.0.txt" "$DIST/Apache-2.0.txt"
 cp "$ROOT/licenses/build123d-NOTICE.txt" "$DIST/build123d-NOTICE.txt"
 cp "$ROOT/licenses/PyVista-MIT.txt" "$DIST/PyVista-MIT.txt"
-cp "$OCCT_PREFIX/share/doc/opencascade/LICENSE_LGPL_21.txt" "$DIST/OCCT-LICENSE_LGPL_21.txt"
-cp "$OCCT_PREFIX/share/doc/opencascade/OCCT_LGPL_EXCEPTION.txt" "$DIST/OCCT-LGPL-EXCEPTION.txt"
+# OCCT's Windows install keeps the licenses at the prefix root.
+occt_doc="$OCCT_PREFIX/share/doc/opencascade"
+[ -d "$occt_doc" ] || occt_doc="$OCCT_PREFIX"
+cp "$occt_doc/LICENSE_LGPL_21.txt" "$DIST/OCCT-LICENSE_LGPL_21.txt"
+cp "$occt_doc/OCCT_LGPL_EXCEPTION.txt" "$DIST/OCCT-LGPL-EXCEPTION.txt"
 # OCCT is LGPL-2.1+exception everywhere; the license text ships in-repo so
 # macOS/Windows staging does not depend on /usr/share/common-licenses.
 cp "$ROOT/licenses/LGPL-2.1.txt" "$DIST/LGPL-2.1.txt"
