@@ -25,3 +25,10 @@ for name,points,error in [
   run(name+operation,body,error)
 run('valid-extrusion','let sk=scene.sketch().point(0.0,0.0).point(2.0,0.0).point(2.0,3.0).point(0.0,3.0).close(); let s=scene.extrude(sk,4.0,material()); scene.assert_close(s.volume(),24.0,0.000001);')
 print('CAD sketch validation and valid extrusion pass')
+
+for expression in ['scene.sphere(1000000000000000.0,material())','scene.cylinder(1000000000.0,1.0,material())','scene.box(0.0000000001,1.0,1.0,material())']:
+ run('dimension-limit',expression+';','CAD dimension')
+run('huge-scale','let s=scene.sphere(1.0,material()).scale(1000000000.0,1.0,1.0); s.fillet(0.1);','host limit')
+run('huge-position','let s=scene.box(1.0,1.0,1.0,material()).position(1000000000.0,0.0,0.0); s.volume();','host limit')
+run('huge-sketch','let sk=scene.sketch().point(0.0,0.0).point(1000000000.0,0.0).point(0.0,1.0).close(); scene.extrude(sk,1.0,material());','host limit')
+print('CAD geometry envelope refuses extreme dimensions before meshing')

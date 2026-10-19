@@ -31,3 +31,7 @@ let x = -20.0 + float(ix) * 8.0;
 ```
 
 Safe `int` to `float` widening in mixed arithmetic would make grid loops shorter. The examples retain explicit conversions; no compiler or SDK changes were made.
+
+## Host geometry limits
+
+Before meshing, the host restricts each BRep to a 1000-unit bounding-box span, absolute coordinates at most 1,000,000, 2000 face occurrences and 10,000 edge occurrences. Primitive dimensions and operation distances are 0.00001–1000; sketch coordinates are within ±500. Baked transforms receive the same envelope check before invoking OCCT. The meshing helper accepts deflection 0.01–1 (scripts use fixed 0.1); exported meshes are limited to 1,000,000 triangles. These host checks prevent extreme dimensions from driving absolute-deflection meshing and keep normal-key quantization in range; they are not VM budgets. Mesh volumes approximate BRep volumes and are not exact analytic volumes.
