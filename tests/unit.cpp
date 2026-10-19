@@ -5,7 +5,9 @@
 #include "inflate.hpp"
 #include <filesystem>
 #include <csignal>
+#ifndef _WIN32
 #include <sys/resource.h>
+#endif
 #include "keyframes.hpp"
 #include <cstdint>
 #include <cmath>
@@ -64,12 +66,20 @@ int main(int argc,char** argv){try{
    auto original=read(target);
    {lmcad::AtomicFile output(target);output.write({1,2,3});}
    check(read(target)==original,"abandoned write replaced destination");
+#ifdef _WIN32
+   // No RLIMIT_FSIZE/SIGXFSZ on Windows; the failed-write-destroys-nothing
+   // guarantee is still exercised above (abandoned write) and in CI by the
+   // host-level refusal checks.
+   {lmcad::AtomicFile output(target);output.write(std::vector<unsigned char>(1024,42));output.commit();}
+   check(read(target)!=original&&read(target).size()==1024,"committed write replaces destination");
+#else
    struct rlimit oldLimit{};check(getrlimit(RLIMIT_FSIZE,&oldLimit)==0,"get file limit");
    auto limit=oldLimit;limit.rlim_cur=16;auto oldSignal=signal(SIGXFSZ,SIG_IGN);
    check(setrlimit(RLIMIT_FSIZE,&limit)==0,"set file limit");bool failed=false;
    try{lmcad::AtomicFile output(target);output.write(std::vector<unsigned char>(1024,42));output.commit();}catch(const std::exception&){failed=true;}
    setrlimit(RLIMIT_FSIZE,&oldLimit);signal(SIGXFSZ,oldSignal);
    check(failed&&read(target)==original,"failed write destroyed destination");
+#endif
    for(const auto& entry:std::filesystem::directory_iterator(dir))check(entry.path().filename().string().rfind(".lmcad-",0)!=0,"failed output leaked temporary file");
  }
  for(auto named_mesh:std::vector<std::pair<std::string,lmcad::Mesh>>{{"box",lmcad::cad::tessellate(lmcad::cad::box(2,2,2))},{"sphere",lmcad::cad::tessellate(lmcad::cad::sphere(1))},{"cylinder",lmcad::cad::tessellate(lmcad::cad::cylinder(1,2))}}) {
