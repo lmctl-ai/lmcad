@@ -15,7 +15,8 @@ if [ "${1:-}" = "--verify" ]; then
   exit 0
 fi
 [ -f "$SDK/include/dslvm.hpp" ] || { echo "cpp-dsl-sdk checkout not found at $SDK (set CPP_DSL_SDK)" >&2; exit 1; }
-cp "$SDK/include/dslvm.hpp" "$HEADER"
-commit="$(git -C "$SDK" rev-parse HEAD)"
+ref="${CPP_DSL_SDK_REF:-origin/main}"
+commit="$(git -C "$SDK" rev-parse "$ref")"
+git -C "$SDK" show "$commit:include/dslvm.hpp" > "$HEADER"
 printf 'repo=https://github.com/lmctlhq/cpp-dsl-sdk\ncommit=%s\nsha256=%s\n' "$commit" "$(hash "$HEADER")" > "$LOCK"
 echo "synced cpp/dslvm.hpp from cpp-dsl-sdk $commit"
