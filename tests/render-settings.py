@@ -10,7 +10,7 @@ def compiler_cmd(c):
     if sys.platform == 'win32' and os.path.exists(c + '.cmd'):
         return ['cmd.exe', '/c', c + '.cmd']
     return [c]
-schema=Path('schema/lmcad.dsl.json').resolve()
+schema=Path('schema/lmcad.dsl.json').resolve().as_posix()
 def run(name,body,error=None):
  source=work/(name+'.lms');bytecode=work/(name+'.dslb')
  source.write_text(f'p = _dsl_ schema={json.dumps(str(schema))};\n{body}\nend _dsl_\nsavedsl(p,{json.dumps(str(bytecode))});\n')

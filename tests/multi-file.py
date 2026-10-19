@@ -12,7 +12,7 @@ def compiler_cmd(c):
     if sys.platform == 'win32' and os.path.exists(c + '.cmd'):
         return ['cmd.exe', '/c', c + '.cmd']
     return [c]
-schema=Path('schema/lmcad.dsl.json').resolve()
+schema=Path('schema/lmcad.dsl.json').resolve().as_posix()
 mesh=work/'shared.stl'
 marker=work/'later.stl'
 def compile(name,body):

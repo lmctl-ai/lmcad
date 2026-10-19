@@ -2,7 +2,7 @@
 import json,os,subprocess,sys
 from pathlib import Path
 work=Path(sys.argv[1])/'cad-check';work.mkdir(exist_ok=True)
-schema=Path('schema/lmcad.dsl.json').resolve()
+schema=Path('schema/lmcad.dsl.json').resolve().as_posix()
 compiler=os.environ['LMSCRIPT_BIN'];host=os.environ['LMCAD_HOST']
 
 def compiler_cmd(c):

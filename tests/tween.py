@@ -15,10 +15,10 @@ def compiler_cmd(c):
         return ['cmd.exe', '/c', c + '.cmd']
     return [c]
 host = os.environ['LMCAD_HOST']
-schema = str(Path('schema/lmcad.dsl.json').resolve())
+schema = str(Path('schema/lmcad.dsl.json').resolve().as_posix())
 csv = work / 'three.csv'
 csv.write_text(Path('examples/data/keyframes.csv').read_text() + '2.0,2.0,1.0,0.0,0.2,0.9,0.1\n')
-source = Path('examples/tween.lms').read_text().replace('../schema/lmcad.dsl.json', schema).replace('examples/data/keyframes.csv', str(csv)).replace('build/tween-', str(work / 'frame-')).replace('build/tween.apng', str(work / 'multi.apng'))
+source = Path('examples/tween.lms').read_text().replace('../schema/lmcad.dsl.json', schema).replace('examples/data/keyframes.csv', csv.as_posix()).replace('build/tween-', (work / 'frame-').as_posix()).replace('build/tween.apng', (work / 'multi.apng').as_posix())
 
 def run(name, text):
     path = work / (name + '.lms'); output = work / (name + '.dslb')
@@ -39,7 +39,7 @@ reference = source.split('let frames_per_segment')[0] + f'''
 for (i in range(0, keys.len())) {{
   let key = keys.at(i);
   shape.position(key.x(), key.y(), key.z()).color(key.r(), key.g(), key.b());
-  scene.render_png("{work}/ref-" + str(i) + ".png", 160, 120);
+  scene.render_png("{work.as_posix()}/ref-" + str(i) + ".png", 160, 120);
 }}
 end _dsl_
 '''

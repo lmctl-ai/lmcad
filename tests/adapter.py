@@ -10,7 +10,7 @@ work = Path(sys.argv[1]) / 'relocated-clone'
 for name in ['lmscript-source.sh', 'lmscript-source.mjs']:
     shutil.copy2(Path('scripts') / name, work / 'scripts' / name)
 source = work / 'input.lms'
-schema = Path('schema/lmcad.dsl.json').resolve()
+schema = Path('schema/lmcad.dsl.json').resolve().as_posix()
 body = f'''# fake = _dsl_ schema="missing";
 p = _dsl_ schema="{schema}";
 # end _dsl_ inside a comment
