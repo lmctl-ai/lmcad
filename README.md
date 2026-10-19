@@ -25,7 +25,7 @@ scripts/lmscript-mono.sh examples/still-life.lms build/still-life.dslb
 build/lmcad --dsl build/still-life.dslb
 ```
 
-`--schema` prints the embedded schema bytes exactly. `--dsl-signatures` prints the host registry's canonical signature list, which must match the compiler's output for the schema. `--dsl FILE [FILE ...]` executes bytecode files in argument order, using one embedded schema and the same host context for every block. The old `--schema FILE` input form is removed.
+`--schema` prints the embedded schema bytes exactly. `--dsl-signatures` prints the host registry's canonical signature list, which must match the compiler's output for the schema. `--dsl FILE [FILE ...]` executes bytecode files in argument order, using one embedded schema and the same host context for every block. Each file has fresh VM locals, while shapes, materials, camera and other host state persist across files. Execution stops on the first load or runtime error (exit 3); previous outputs and any output already written by the failing block remain. Each completed block prints one success JSON line, followed by an error JSON line if a later block fails. All command-line arguments are validated before execution (invalid syntax exits 2). The old `--schema FILE` input form is removed.
 
 The examples cover a lit still life, STL export, a range-loop row, and CSV-driven tweening. To compile and run them individually:
 

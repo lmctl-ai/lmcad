@@ -103,15 +103,18 @@ int main(int argc,char** argv){
     std::cerr<<"usage: lmcad --schema | --dsl-signatures | --dsl FILE [FILE ...]\n";
     return 2;
   }
-  const std::string schema(reinterpret_cast<const char*>(lmcad::embedded_schema),
-                           lmcad::embedded_schema_size);
-  dslvm::Context context;
-  context.set("scene",&host);
+  // Validate the complete invocation before any block can write output.
   for(int i=2;i<argc;i++) {
     if(std::string(argv[i]).empty()||std::string(argv[i]).rfind("--",0)==0) {
       std::cerr<<"usage: lmcad --schema | --dsl-signatures | --dsl FILE [FILE ...]\n";
       return 2;
     }
+  }
+  const std::string schema(reinterpret_cast<const char*>(lmcad::embedded_schema),
+                           lmcad::embedded_schema_size);
+  dslvm::Context context;
+  context.set("scene",&host);
+  for(int i=2;i<argc;i++) {
     dslvm::Program program;
     try {
       program=dslvm::Program::load(dslvm::read_file(argv[i]),schema,reg);
