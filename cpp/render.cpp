@@ -38,6 +38,8 @@ Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& 
     Vec3 face_normal;try{face_normal=normalized(cross(p[1]-p[0],p[2]-p[0]));}catch(...){continue;}
     Vec3 normals[3]={face_normal,face_normal,face_normal};
     if(local.smooth)try{normals[0]=transform_normal(shape,local.na);normals[1]=transform_normal(shape,local.nb);normals[2]=transform_normal(shape,local.nc);}catch(...){normals[0]=normals[1]=normals[2]=face_normal;}
+    // transform_triangle reverses reflected winding; keep normals paired with vertices.
+    if ((shape.scale.x<0) ^ (shape.scale.y<0) ^ (shape.scale.z<0)) std::swap(normals[1],normals[2]);
     for(int pi=0;pi<3;pi++){auto point=p[pi];
       long double x=static_cast<long double>(point.x)-camera.eye.x,y=static_cast<long double>(point.y)-camera.eye.y,z=static_cast<long double>(point.z)-camera.eye.z;
       polygon.push_back({x*right.x+y*right.y+z*right.z,x*up.x+y*up.y+z*up.z,x*forward.x+y*forward.y+z*forward.z,normals[pi]});

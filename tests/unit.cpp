@@ -26,6 +26,15 @@ int main(int argc,char** argv){try{
        check(lmcad::dot(lmcad::cross(t.b-t.a,t.c-t.a),(t.a+t.b+t.c)/3)>-1e-8,(named_mesh.first+"/reflected winding points inward").c_str());
    }
  }
+ // A reflected smooth triangle must match an explicitly reflected mesh, including its corner normals.
+ lmcad::Shape reflected;reflected.scale={-1,1,1};
+ lmcad::Triangle smooth{{-1,-1,0},{1,-1,0},{0,1,0}};
+ smooth.na=lmcad::normalized({0,0,1});smooth.nb=lmcad::normalized({1,0,1});smooth.nc=lmcad::normalized({0,1,1});smooth.smooth=true;
+ reflected.mesh.triangles={smooth};
+ lmcad::Shape baked;auto rt=lmcad::transform_triangle(reflected,smooth);
+ rt.na=lmcad::transform_normal(reflected,smooth.na);rt.nb=lmcad::transform_normal(reflected,smooth.nc);rt.nc=lmcad::transform_normal(reflected,smooth.nb);rt.smooth=true;baked.mesh.triangles={rt};
+ lmcad::Camera reflectcam;reflectcam.eye={0,0,5};reflectcam.target={0,0,0};
+ check(lmcad::render({reflected},reflectcam,{}, {},63,47).rgb==lmcad::render({baked},reflectcam,{}, {},63,47).rgb,"reflection swapped vertices without their smooth normals");
  lmcad::Camera clipcam;clipcam.eye={0,0,0};clipcam.target={0,0,-1};clipcam.near_clip=1;clipcam.far_clip=4;
  lmcad::Shape crossing;crossing.mesh.triangles={{{-1,-1,-2},{1,-1,-2},{0,1,-.5}}};
  auto visible=[&](const lmcad::Shape& shape){auto im=lmcad::render({shape},clipcam,lmcad::Light{}, {0,0,0},32,32);size_t n=0;for(auto c:im.rgb)n+=c!=0;return n;};
