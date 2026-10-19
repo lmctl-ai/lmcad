@@ -80,3 +80,12 @@ primary upstream license files:
 - [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
 - [MIT License](https://opensource.org/license/mit)
 - [GCC libstdc++ runtime license and exception](https://gcc.gnu.org/onlinedocs/gcc-13.3.0/libstdc++/manual/manual/license.html)
+
+
+## Linux Actions verification (2026-10-19)
+
+- Cold run [`39264695761`](https://github.com/lmctlhq/lmcad/actions/runs/39264695761): x64 OCCT install took 34m24s; arm64 took 20m58s. Both jobs passed `test.sh` (26 checks using the published v5 compiler), the static executable check (`ldd`: `not a dynamic executable`), notice staging, and artifact upload. The measured x64 time exceeded the earlier ~16-minute estimate; allow up to about 35 minutes for a cold x64 runner.
+- The saved install-prefix caches were 27.47 MiB for x64 and 27.77 MiB for arm64. Warm manual run [`39270104147`](https://github.com/lmctlhq/lmcad/actions/runs/39270104147) restored both cache keys, skipped the OCCT build, and completed the full Linux jobs in 76 seconds (x64) and 74 seconds (arm64); tests and static checks passed again.
+- Release staging produced x64 (30,116,488 bytes) and arm64 (26,767,080 bytes) executables. Both job artifacts contained `THIRD_PARTY_NOTICES`, the OCCT LGPL and exception texts, LGPL/GPL texts, and GCC/glibc copyright notices. The notice-staging script and private npm layout were also smoke-checked locally; `private: true` and both optional platform packages were present.
+- macOS and Windows were skipped in both default Linux runs. Their workflow-dispatch gates and build notes were inspected. The tag-gated release job was inspected but not run because this verification did not create a release tag.
+- Summing Linux job durations returned by `gh run view --json jobs` across this CI effort gives about 142 Linux runner-minutes, including canceled cold attempts and the first failed cold run before the fixes. GitHub billing totals were not exposed by the available CLI data.
