@@ -3,9 +3,20 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE"
 BUILD_DIR="${BUILD_DIR:-build}"
-HOST="$BUILD_DIR/lmcad"
-UNIT="$BUILD_DIR/lmcad-unit"
+UNAME_S="$(uname -s)"
+EXE=""
+case "$UNAME_S" in MINGW*|MSYS*|CYGWIN*) EXE=".exe";; esac
+HOST="$BUILD_DIR/lmcad$EXE"
+UNIT="$BUILD_DIR/lmcad-unit$EXE"
+APNG="$BUILD_DIR/lmcad-apng-extract$EXE"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/lmcad-test-XXXXXX")"
+# Native Windows hosts cannot address git-bash /tmp paths; the compiler also
+# embeds the schema path into chunks, so both become drive-letter paths.
+SCHEMA_PATH="$HERE/schema/lmcad.dsl.json"
+case "$UNAME_S" in MINGW*|MSYS*|CYGWIN*)
+  WORK="$(cd "$WORK" && pwd -W | tr '\\' '/')"
+  SCHEMA_PATH="$(cd "$HERE" && pwd -W | tr '\\' '/')/schema/lmcad.dsl.json";;
+esac
 pass=0
 ok(){ pass=$((pass+1)); echo "ok $pass - $1"; }
 fail(){ echo "FAIL: $*" >&2; exit 1; }
@@ -80,17 +91,17 @@ for name in ('section-view','mug'):
 print(f'PNG 640x480 + CAD PNG 720x540, PPM/OBJ valid, STL box facets={n}, CAD STL facets checked, tween frames={len(frames)}, unique={len(set(hashes))}')
 PY
 ok "PNG dimensions/pixels, STL facets, CAD exports, loop render, glyph field, and 30 distinct tween frames"
-"$BUILD_DIR/lmcad-apng-extract" build/tween.apng 0 "$WORK/tween-apng-first.png" || fail "extract tween APNG frame 0"
+"$APNG" build/tween.apng 0 "$WORK/tween-apng-first.png" || fail "extract tween APNG frame 0"
 cmp build/tween-0.png "$WORK/tween-apng-first.png" || fail "APNG first frame differs from PNG render"
-"$BUILD_DIR/lmcad-apng-extract" build/tween.apng 15 "$WORK/tween-apng-middle.png" || fail "extract tween APNG middle frame"
-"$BUILD_DIR/lmcad-apng-extract" build/tween.apng 29 "$WORK/tween-apng-last.png" || fail "extract tween APNG last frame"
+"$APNG" build/tween.apng 15 "$WORK/tween-apng-middle.png" || fail "extract tween APNG middle frame"
+"$APNG" build/tween.apng 29 "$WORK/tween-apng-last.png" || fail "extract tween APNG last frame"
 cmp -s "$WORK/tween-apng-first.png" "$WORK/tween-apng-middle.png" && fail "tween APNG middle frame did not change"
 cmp -s "$WORK/tween-apng-middle.png" "$WORK/tween-apng-last.png" && fail "tween APNG last frame did not change"
-for frame in 0 18 35; do "$BUILD_DIR/lmcad-apng-extract" build/turntable.apng "$frame" "$WORK/turntable-$frame.png" || fail "extract turntable frame $frame"; done
+for frame in 0 18 35; do "$APNG" build/turntable.apng "$frame" "$WORK/turntable-$frame.png" || fail "extract turntable frame $frame"; done
 cmp -s "$WORK/turntable-0.png" "$WORK/turntable-18.png" && fail "turntable middle frame did not change"
 cmp -s "$WORK/turntable-18.png" "$WORK/turntable-35.png" && fail "turntable last frame did not change"
 ok "APNG extracted frames decode to PNG; tween and turntable frames differ"
-node tests/apng-extract.cjs "$BUILD_DIR/lmcad-apng-extract" "$WORK"
+node tests/apng-extract.cjs "$APNG" "$WORK"
 ok "APNG extraction rejects malformed structure and invalid indices"
 "$UNIT" "$WORK" build || fail "C++ unit checks"
 ok "PNG CRC/Adler, APNG chunk CRC/sequence/frame count, and raster determinism checks"
@@ -130,7 +141,7 @@ set +e; out="$("$HOST" --schema schema/lmcad.dsl.json 2>&1)"; code=$?; set -e
 ok "old --schema FILE input option refused (exit 2)"
 
 cat > "$WORK/no-camera.lms" <<EOF2
-p = _dsl_ schema="$HERE/schema/lmcad.dsl.json";
+p = _dsl_ schema="$SCHEMA_PATH";
 scene.render_png("$WORK/no-camera.png", 8, 8);
 end _dsl_
 savedsl(p, "$WORK/no-camera.dslb");
@@ -140,7 +151,7 @@ set +e; out="$("$HOST" --dsl "$WORK/no-camera.dslb" 2>&1)"; code=$?; set -e
 [ "$code" = 3 ] && [[ "$out" == *'render requires a camera'* ]] || fail "camera validation refusal (exit $code): $out"
 ok "camera required validation (exit 3)"
 cat > "$WORK/bad-supersample.lms" <<EOF2
-p = _dsl_ schema="$HERE/schema/lmcad.dsl.json";
+p = _dsl_ schema="$SCHEMA_PATH";
 scene.supersample(5);
 end _dsl_
 savedsl(p, "$WORK/bad-supersample.dslb");
@@ -150,7 +161,7 @@ set +e; out="$($HOST --dsl "$WORK/bad-supersample.dslb" 2>&1)"; code=$?; set -e
 [ "$code" = 3 ] && [[ "$out" == *'supersample must be between 1 and 4'* ]] || fail "invalid supersample was accepted (exit $code): $out"
 ok "supersampling factor is bounded to 1..4"
 cat > "$WORK/bad-fillet.lms" <<EOF2
-p = _dsl_ schema="$HERE/schema/lmcad.dsl.json";
+p = _dsl_ schema="$SCHEMA_PATH";
 let shape = scene.box(10.0, 10.0, 10.0, material());
 shape.fillet(100.0);
 end _dsl_
@@ -179,4 +190,32 @@ if [ -n "${LMSCRIPT_SOURCE:-}" ] && [ -f "$LMSCRIPT_SOURCE/dsl.ts" ]; then
 else
   echo "skip - source adapter check (set LMSCRIPT_SOURCE to a compiler source directory)"
 fi
+
+# npm layout smoke: fake binaries, real notice files.
+NPMART="$WORK/npm-art"; mkdir -p "$NPMART"
+cp LICENSE "$NPMART/"; cp THIRD_PARTY_NOTICES.md "$NPMART/THIRD_PARTY_NOTICES"
+cp licenses/*.txt "$NPMART/"; cp licenses/LINUX-RELINKING.md "$NPMART/OCCT-RELINKING.md"
+cp .github/occt-cmake-flags.txt "$NPMART/"; cp scripts/build-occt.sh "$NPMART/"
+printf 'x' > "$NPMART/OCCT-LICENSE_LGPL_21.txt"; printf 'x' > "$NPMART/OCCT-LGPL-EXCEPTION.txt"
+printf 'x' > "$NPMART/GCC-TOOLCHAIN-COPYRIGHT"; printf 'x' > "$NPMART/GLIBC-COPYRIGHT"
+for p in linux-x64 linux-arm64 macos-x64 macos-arm64 windows-x64; do printf 'x' > "$NPMART/lmcad-$p"; done
+for p in linux-x64 linux-arm64; do tar -czf "$NPMART/lmcad-$p-relink-objects.tar.gz" -C "$NPMART" LICENSE; done
+scripts/npm-layout.sh "$NPMART" "$WORK/npm-out" 1.2.3 >/dev/null || fail "npm layout"
+python3 - "$WORK/npm-out" <<'PY'
+import json,os,sys
+out=sys.argv[1]
+main=json.load(open(f'{out}/lmcad/package.json'))
+assert main['license']=='MIT' and main['private'] is True, main
+assert set(main['optionalDependencies'])=={f'@lmcad/{p}' for p in ('linux-x64','linux-arm64','macos-x64','macos-arm64','windows-x64')}, main
+expect={'linux-x64':('linux','x64','lmcad'),'linux-arm64':('linux','arm64','lmcad'),
+        'macos-x64':('darwin','x64','lmcad'),'macos-arm64':('darwin','arm64','lmcad'),
+        'windows-x64':('win32','x64','lmcad.exe')}
+for p,(os_,cpu,binname) in expect.items():
+    j=json.load(open(f'{out}/@lmcad/{p}/package.json'))
+    assert (j['os'],j['cpu'],j['license'],j['private'])==([os_],[cpu],'MIT',True), j
+    assert binname in j['files'] and os.path.isfile(f'{out}/@lmcad/{p}/{binname}'), p
+    assert 'LICENSE' in j['files'] and os.path.isfile(f'{out}/@lmcad/{p}/LICENSE'), p
+print('npm layout: 5 platforms, MIT, private, os/cpu/files correct')
+PY
+ok "npm layout: five platform packages with per-platform notices"
 echo "PASS: $pass checks"

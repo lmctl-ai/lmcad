@@ -9,7 +9,16 @@ if [[ ! -d "$SRC/.git" ]]; then
   rm -rf "$SRC"
   git clone --depth 1 --branch V8_0_1 https://github.com/Open-Cascade-SAS/OCCT.git "$SRC"
 fi
-mapfile -t flags < "$FLAGS_FILE"
-nice -n 10 cmake -S "$SRC" -B "$BUILD" -G Ninja "${flags[@]}" "-DCMAKE_INSTALL_PREFIX=$PREFIX"
-/usr/bin/time -f 'OCCT build wall=%E max-rss-kb=%M' nice -n 10 cmake --build "$BUILD" --parallel 3
-nice -n 10 cmake --install "$BUILD"
+# bash 3.2 (macOS) has no mapfile; git-bash has no /usr/bin/time; MSYS `nice`
+# is absent, so run unniced there.
+flags=()
+while IFS= read -r line; do flags+=("$line"); done < "$FLAGS_FILE"
+NICE=(nice -n 10)
+if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* ]]; then NICE=(); fi
+"${NICE[@]}" cmake -S "$SRC" -B "$BUILD" -G Ninja "${flags[@]}" "-DCMAKE_INSTALL_PREFIX=$PREFIX"
+if [[ -x /usr/bin/time ]]; then
+  /usr/bin/time -f 'OCCT build wall=%E max-rss-kb=%M' "${NICE[@]}" cmake --build "$BUILD" --parallel 3
+else
+  "${NICE[@]}" cmake --build "$BUILD" --parallel 3
+fi
+"${NICE[@]}" cmake --install "$BUILD"
