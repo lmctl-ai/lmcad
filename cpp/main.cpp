@@ -25,6 +25,8 @@ struct Host {
   std::vector<std::unique_ptr<lmcad::cad::Sketch>> sketches;
   lmcad::Camera camera;
   lmcad::Light light;
+  struct LightHandle { double* intensity; };
+  LightHandle key_handle{&light.intensity}, fill_handle{&light.fill_intensity};
   lmcad::Color background{.08,.09,.12};
   int supersample=2;
   bool has_camera=false, has_light=false;
@@ -68,8 +70,8 @@ void register_host(dslvm::Registry& r,Host& h){
   checked_method(r,"Scene","sphere",{"float","Material"},"Shape",[&h](void*,Args& a){positive(a[0].f,"sphere radius");return h.hold(h.shapes,"Shape",make_shape(lmcad::cad::sphere(a[0].f),*static_cast<lmcad::Material*>(a[1].obj)));});
   checked_method(r,"Scene","cylinder",{"float","float","Material"},"Shape",[&h](void*,Args& a){positive(a[0].f,"cylinder radius");positive(a[1].f,"cylinder height");return h.hold(h.shapes,"Shape",make_shape(lmcad::cad::cylinder(a[0].f,a[1].f),*static_cast<lmcad::Material*>(a[2].obj)));});
   checked_method(r,"Scene","camera",{"float","float","float","float","float","float","float"},"Camera",[&h](void*,Args& a){for(auto& x:a)finite(x.f,"camera argument");if(a[0].f<=0||a[0].f>=179)throw dslvm::Error("camera field of view must be between 0 and 179 degrees");h.camera={a[0].f,vec(a,1),vec(a,4),.01,10000};try{lmcad::normalized(h.camera.target-h.camera.eye);lmcad::normalized(lmcad::cross(h.camera.target-h.camera.eye,{0,1,0}));}catch(...){throw dslvm::Error("camera eye and target must differ and view direction must not be vertical");}h.has_camera=true;return Value::object("Camera",&h.camera);});
-  checked_method(r,"Scene","directional_light",{"float","float","float","float"},"Light",[&h](void*,Args& a){for(auto& x:a)finite(x.f,"directional light argument");if(a[3].f<0)throw dslvm::Error("light intensity must not be negative");try{h.light.direction=lmcad::normalized(vec(a,0));}catch(...){throw dslvm::Error("light direction must be nonzero");}h.light.intensity=a[3].f;h.has_light=true;return Value::object("Light",&h.light);});
-  checked_method(r,"Scene","fill_light",{"float","float","float","float"},"Light",[&h](void*,Args& a){for(auto& x:a)finite(x.f,"fill light argument");if(a[3].f<0)throw dslvm::Error("fill light intensity must not be negative");try{h.light.fill_direction=lmcad::normalized(vec(a,0));}catch(...){throw dslvm::Error("fill light direction must be nonzero");}h.light.fill_intensity=a[3].f;return Value::object("Light",&h.light);});
+  checked_method(r,"Scene","directional_light",{"float","float","float","float"},"Light",[&h](void*,Args& a){for(auto& x:a)finite(x.f,"directional light argument");if(a[3].f<0)throw dslvm::Error("light intensity must not be negative");try{h.light.direction=lmcad::normalized(vec(a,0));}catch(...){throw dslvm::Error("light direction must be nonzero");}h.light.intensity=a[3].f;h.has_light=true;return Value::object("Light",&h.key_handle);});
+  checked_method(r,"Scene","fill_light",{"float","float","float","float"},"Light",[&h](void*,Args& a){for(auto& x:a)finite(x.f,"fill light argument");if(a[3].f<0)throw dslvm::Error("fill light intensity must not be negative");try{h.light.fill_direction=lmcad::normalized(vec(a,0));}catch(...){throw dslvm::Error("fill light direction must be nonzero");}h.light.fill_intensity=a[3].f;return Value::object("Light",&h.fill_handle);});
   checked_method(r,"Scene","ambient",{"float"},"Scene",[&h](void* p,Args& a){color_range(a[0].f,"ambient level");h.light.ambient=a[0].f;return Value::object("Scene",p);});
   checked_method(r,"Scene","supersample",{"int"},"Scene",[&h](void* p,Args& a){if(a[0].i<1||a[0].i>4)throw dslvm::Error("supersample must be between 1 and 4");h.supersample=static_cast<int>(a[0].i);return Value::object("Scene",p);});
   auto values=[&h](){std::vector<lmcad::Shape> s;s.reserve(h.shapes.size());for(const auto& p:h.shapes)s.push_back(p->display);return s;};
@@ -107,7 +109,7 @@ void register_host(dslvm::Registry& r,Host& h){
   checked_method(r,"Camera","clipping",{"float","float"},"Camera",[](void* p,Args& a){positive(a[0].f,"near clipping plane");positive(a[1].f,"far clipping plane");if(a[1].f<=a[0].f)throw dslvm::Error("far clipping plane must be greater than near clipping plane");auto* c=self<lmcad::Camera>(p);c->near_clip=a[0].f;c->far_clip=a[1].f;return Value::object("Camera",p);});
   checked_method(r,"Material","color",{"float","float","float"},"Material",[](void* p,Args& a){for(int i=0;i<3;i++)color_range(a[i].f,"material color channel");self<lmcad::Material>(p)->color={a[0].f,a[1].f,a[2].f};return Value::object("Material",p);});
   checked_method(r,"Material","roughness",{"float"},"Material",[](void* p,Args& a){color_range(a[0].f,"roughness");self<lmcad::Material>(p)->roughness=a[0].f;return Value::object("Material",p);});
-  checked_method(r,"Light","intensity",{"float"},"Light",[](void* p,Args& a){finite(a[0].f,"light intensity");if(a[0].f<0)throw dslvm::Error("light intensity must not be negative");self<lmcad::Light>(p)->intensity=a[0].f;return Value::object("Light",p);});
+  checked_method(r,"Light","intensity",{"float"},"Light",[](void* p,Args& a){finite(a[0].f,"light intensity");if(a[0].f<0)throw dslvm::Error("light intensity must not be negative");*self<Host::LightHandle>(p)->intensity=a[0].f;return Value::object("Light",p);});
   checked_function(r,"read_keyframes_csv",{"string"},"Keyframes",[&h](Args& a){
     auto rows=std::make_unique<std::vector<Host::Keyframe>>(lmcad::read_keyframes_csv(a[0].s));
     return h.hold(h.keyframes,"Keyframes",std::move(*rows));
