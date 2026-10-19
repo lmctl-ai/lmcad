@@ -83,10 +83,13 @@ PY
 ok "tween frame rerun completes deterministically"
 for example in plate-with-holes brick vase; do
   cp "build/$example.png" "$WORK/$example.before.png"
+  cp "build/$example.stl" "$WORK/$example.before.stl"
   "$HOST" --dsl "build/$example.dslb" >/dev/null || fail "$example deterministic rerun"
   cmp "build/$example.png" "$WORK/$example.before.png" || fail "$example PNG changed between runs"
+  cmp "build/$example.stl" "$WORK/$example.before.stl" || fail "$example STL changed between runs"
 done
-ok "OCCT tessellation, Boolean results, and CAD PNG exports are deterministic"
+python3 tests/cad-exports.py
+ok "CAD PNG/STL determinism, closed oriented surfaces, and approximate mesh volumes"
 
 set +e; out="$("$HOST" 2>&1)"; code=$?; set -e
 [ "$code" = 2 ] && [[ "$out" == *'usage: lmcad'* ]] || fail "bad args refusal (exit $code): $out"

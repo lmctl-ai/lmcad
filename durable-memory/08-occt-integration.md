@@ -2,7 +2,7 @@
 
 ## Geometry path
 
-All script-created box, sphere, cylinder, extruded sketch, and revolved profile shapes are OCCT `TopoDS_Shape` values. Shape operations (fuse, cut, common, fillet, chamfer, inward shell, and mirror) stay in BRep form. `BRepMesh_IncrementalMesh` tessellates at linear deflection 0.1 with relative mode off and serial execution; generated triangles and deterministic angle-gated vertex normals feed the existing software rasterizer and in-tree PNG/PPM/STL/OBJ writers. No OCCT exchange module is linked.
+All script-created box, sphere, cylinder, extruded sketch, and revolved profile shapes are OCCT `TopoDS_Shape` values. Shape operations (fuse, cut, common, fillet, chamfer, inward shell, and mirror) stay in BRep form. `BRepMesh_IncrementalMesh` tessellates at linear deflection 0.1 with relative mode off and serial execution; triangles are cyclically normalized and sorted to remove OCCT face-enumeration order differences before normal accumulation and export. The angle gate averages incident triangle normals within 60 degrees of the current face; those vertex normals feed the existing software rasterizer and in-tree PNG/PPM/STL/OBJ writers. No OCCT exchange module is linked.
 
 The base static closure from the spike is 14 OCCT archives. `TKOffset` is added as the 15th archive because `BRepOffsetAPI_MakeThickSolid` needs it for shelling. This is the smallest closure verified for the requested host operations; deleting `TKOffset` leaves unresolved shell symbols. The final aarch64 Release executable is fully static; the binary is 26,758,520 bytes (25.5 MiB), `file` identifies it as statically linked AArch64 ELF, and `ldd` reports `not a dynamic executable`; `03-build-run-test.md` has the build record.
 

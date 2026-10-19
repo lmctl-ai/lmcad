@@ -32,3 +32,29 @@ run('huge-scale','let s=scene.sphere(1.0,material()).scale(1000000000.0,1.0,1.0)
 run('huge-position','let s=scene.box(1.0,1.0,1.0,material()).position(1000000000.0,0.0,0.0); s.volume();','host limit')
 run('huge-sketch','let sk=scene.sketch().point(0.0,0.0).point(1000000000.0,0.0).point(0.0,1.0).close(); scene.extrude(sk,1.0,material());','host limit')
 print('CAD geometry envelope refuses extreme dimensions before meshing')
+shape='let s=scene.box(2.0,2.0,2.0,material()); '
+run('empty-intersection',shape+'let tool=scene.box(1.0,1.0,1.0,material()).position(10.0,0.0,0.0); s.intersect(tool); s.volume();','empty')
+run('empty-cut',shape+'s.cut(s); s.volume();','empty')
+run('large-fillet',shape+'s.fillet(100.0);','fillet failed')
+run('large-chamfer',shape+'s.chamfer(100.0);','chamfer failed')
+run('no-planar-shell','scene.sphere(1.0,material()).hollow(0.1);','planar end face')
+for dim in ['0.0','-1.0']:
+ run('nonpositive',f'scene.box({dim},1.0,1.0,material());','positive')
+run('alias-lifetime',shape+'let alias=s; for(i in range(0,100)){scene.box(1.0,1.0,1.0,material()).visible(false);} s.scale(-2.0,1.0,1.0); scene.assert_close(alias.volume(),16.0,0.000001); s.mirror("x"); scene.assert_close(alias.volume(),16.0,0.000001);')
+print('CAD failures, reflected volume, and shape alias ownership pass')
+# The mesh path must agree between exporters and retain positive reflected volume.
+import struct
+stl=work/'reflected.stl';obj=work/'reflected.obj'
+run('reflected-exports',shape+f's.scale(-2.0,1.0,1.0); scene.export_stl({json.dumps(str(stl))}); scene.export_obj({json.dumps(str(obj))});')
+data=stl.read_bytes();stl_tri=[]
+for i in range(struct.unpack_from('<I',data,80)[0]):
+ v=struct.unpack_from('<12f',data,84+50*i)[3:];stl_tri.append([tuple(v[j:j+3]) for j in (0,3,6)])
+vertices=[];obj_tri=[]
+for line in obj.read_text().splitlines():
+ fields=line.split()
+ if fields and fields[0]=='v': vertices.append(tuple(map(float,fields[1:])))
+ if fields and fields[0]=='f': obj_tri.append([vertices[int(i)-1] for i in fields[1:]])
+assert stl_tri==obj_tri,'OBJ/STL geometry differs'
+volume=sum((a[0]*(b[1]*c[2]-b[2]*c[1])+a[1]*(b[2]*c[0]-b[0]*c[2])+a[2]*(b[0]*c[1]-b[1]*c[0]))/6 for a,b,c in obj_tri)
+assert abs(volume-16)<1e-6,volume
+print('OBJ/STL reflected meshes agree with positive BRep volume')

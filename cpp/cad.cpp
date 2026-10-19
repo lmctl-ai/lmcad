@@ -39,6 +39,7 @@
 #include <gp_Mat.hxx>
 #include <Standard_Failure.hxx>
 #include <cmath>
+#include <algorithm>
 #include <stdexcept>
 #include <map>
 #include <tuple>
@@ -128,6 +129,18 @@ Mesh tessellate(const TopoDS_Shape& shape,double tolerance){
   BRepMesh_IncrementalMesh mesher(shape,tolerance,false,0.35,false);if(!mesher.IsDone())throw std::runtime_error("BRepMesh tessellation failed");Mesh out;
   for(TopExp_Explorer e(shape,TopAbs_FACE);e.More();e.Next()){TopoDS_Face f=TopoDS::Face(e.Current());TopLoc_Location loc;Handle(Poly_Triangulation) tri=BRep_Tool::Triangulation(f,loc);if(tri.IsNull())continue;const gp_Trsf tr=loc.Transformation();for(int i=1;i<=tri->NbTriangles();++i){int a,b,c;tri->Triangle(i).Get(a,b,c);gp_Pnt pa=tri->Node(a).Transformed(tr),pb=tri->Node(b).Transformed(tr),pc=tri->Node(c).Transformed(tr);if(f.Orientation()==TopAbs_REVERSED)std::swap(pb,pc);if(out.triangles.size()>=1000000)throw std::runtime_error("CAD triangle limit exceeded (1000000)");out.triangles.push_back({{pa.X(),pa.Y(),pa.Z()},{pb.X(),pb.Y(),pb.Z()},{pc.X(),pc.Y(),pc.Z()}});}}
   if(out.triangles.empty())throw std::runtime_error("shape tessellated to no triangles");
+  // OCCT may enumerate identical faces in different orders across processes.
+  // Preserve winding, but canonicalize cyclic corners and triangle traversal
+  // before accumulating normals or writing mesh bytes.
+  auto point_less=[](Vec3 a,Vec3 b){return std::tie(a.x,a.y,a.z)<std::tie(b.x,b.y,b.z);};
+  for(auto& t:out.triangles){
+    if(point_less(t.b,t.a)&&point_less(t.b,t.c)){auto a=t.a;t.a=t.b;t.b=t.c;t.c=a;}
+    else if(point_less(t.c,t.a)){auto a=t.a;t.a=t.c;t.c=t.b;t.b=a;}
+  }
+  std::sort(out.triangles.begin(),out.triangles.end(),[](const Triangle& a,const Triangle& b){
+    return std::tie(a.a.x,a.a.y,a.a.z,a.b.x,a.b.y,a.b.z,a.c.x,a.c.y,a.c.z)<
+           std::tie(b.a.x,b.a.y,b.a.z,b.b.x,b.b.y,b.b.z,b.c.x,b.c.y,b.c.z);
+  });
   using Key=std::tuple<long long,long long,long long>;auto key=[](Vec3 p){constexpr double q=1e7;return Key{std::llround(p.x*q),std::llround(p.y*q),std::llround(p.z*q)};};
   std::map<Key,std::vector<Vec3>> adjacent;std::vector<Vec3> face_normals;face_normals.reserve(out.triangles.size());
   for(const auto& t:out.triangles){Vec3 n=normalized(cross(t.b-t.a,t.c-t.a));face_normals.push_back(n);for(Vec3 p:{t.a,t.b,t.c})adjacent[key(p)].push_back(n);}
