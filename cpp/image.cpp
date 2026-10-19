@@ -28,21 +28,57 @@ std::vector<unsigned char> ihdr(const Image& im){std::vector<unsigned char> d;pu
 void write_png(const std::string& path,const Image& im){
   auto raw=raw_frame(im),z=deflate_zlib(raw);auto out=signature();chunk(out,"IHDR",ihdr(im));chunk(out,"sRGB",{0});chunk(out,"IDAT",z);chunk(out,"IEND",{});save(path,out);
 }
-void write_apng(const std::string& path,const std::vector<Image>& frames,int fps,uint32_t loop_count){
-  if(frames.empty()||frames.size()>240)throw std::runtime_error("APNG frame count must be between 1 and 240");
+struct ApngWriter::Impl {
+  std::unique_ptr<AtomicFile> file;
+  int width,height,fps;
+  uint32_t loops,count=0,seq=0;
+  bool finished=false,failed=false;
+  long actl_offset=0;
+  Impl(int w,int h,int rate,uint32_t repeat):width(w),height(h),fps(rate),loops(repeat){}
+};
+ApngWriter::ApngWriter(const std::string& path,int width,int height,int fps,uint32_t loops):impl_(new Impl(width,height,fps,loops)) {
+  if(width<1||height<1||width>8192||height>8192||uint64_t(width)*height>16777216)throw std::runtime_error("APNG dimensions exceed limits");
   if(fps<1||fps>240)throw std::runtime_error("APNG fps must be between 1 and 240");
-  const int w=frames.front().width,h=frames.front().height;
-  if(uint64_t(w)*h*frames.size()>64000000)throw std::runtime_error("APNG total frame pixel limit exceeded (64000000)");
-  std::vector<unsigned char> out=signature();chunk(out,"IHDR",ihdr(frames.front()));chunk(out,"sRGB",{0});
-  std::vector<unsigned char> actl;put32(actl,static_cast<uint32_t>(frames.size()));put32(actl,loop_count);chunk(out,"acTL",actl);
-  uint32_t seq=0;
-  for(size_t i=0;i<frames.size();i++){
-    const auto& frame=frames[i];if(frame.width!=w||frame.height!=h)throw std::runtime_error("APNG frames must have identical dimensions");
-    auto raw=raw_frame(frame),z=deflate_zlib(raw);
-    std::vector<unsigned char> fctl;put32(fctl,seq++);put32(fctl,w);put32(fctl,h);put32(fctl,0);put32(fctl,0);put16(fctl,1);put16(fctl,static_cast<uint16_t>(fps));fctl.push_back(0);fctl.push_back(0);chunk(out,"fcTL",fctl);
-    if(i==0)chunk(out,"IDAT",z);else{std::vector<unsigned char> fdat;put32(fdat,seq++);fdat.insert(fdat.end(),z.begin(),z.end());chunk(out,"fdAT",fdat);}
-  }
-  chunk(out,"IEND",{});save(path,out);
+  impl_->file=std::make_unique<AtomicFile>(path);
+  auto header=signature();Image im;im.width=width;im.height=height;chunk(header,"IHDR",ihdr(im));chunk(header,"sRGB",{0});
+  impl_->actl_offset=static_cast<long>(header.size());
+  std::vector<unsigned char> control;put32(control,0);put32(control,loops);chunk(header,"acTL",control);impl_->file->write(header);
+}
+ApngWriter::~ApngWriter()=default;
+void ApngWriter::check_frame() const {
+  const auto& s=*impl_;
+  if(s.finished)throw std::runtime_error("animation is already finished");
+  if(s.failed)throw std::runtime_error("animation write previously failed");
+  if(s.count>=240)throw std::runtime_error("animation frame limit exceeded (240)");
+  if(uint64_t(s.count+1)*s.width*s.height>64000000)throw std::runtime_error("animation total frame pixel limit exceeded (64000000)");
+}
+void ApngWriter::add_frame(const Image& im){
+  check_frame();auto& s=*impl_;
+  if(im.width!=s.width||im.height!=s.height)throw std::runtime_error("APNG frames must have identical dimensions");
+  auto raw=raw_frame(im),z=deflate_zlib(raw);
+  std::vector<unsigned char> out,control;
+  put32(control,s.seq);put32(control,s.width);put32(control,s.height);put32(control,0);put32(control,0);put16(control,1);put16(control,s.fps);control.push_back(0);control.push_back(0);chunk(out,"fcTL",control);
+  if(s.count==0)chunk(out,"IDAT",z);
+  else{std::vector<unsigned char> data;put32(data,s.seq+1);data.insert(data.end(),z.begin(),z.end());chunk(out,"fdAT",data);}
+  try{s.file->write(out);}catch(...){s.failed=true;s.file.reset();throw;}
+  s.seq+=s.count?2:1;++s.count;
+}
+void ApngWriter::finish(){
+  auto& s=*impl_;
+  if(s.finished)throw std::runtime_error("animation is already finished");
+  if(s.failed)throw std::runtime_error("animation write previously failed");
+  if(!s.count)throw std::runtime_error("animation needs at least one frame");
+  try{
+    std::vector<unsigned char> tail;chunk(tail,"IEND",{});s.file->write(tail);
+    std::vector<unsigned char> control,out;put32(control,s.count);put32(control,s.loops);chunk(out,"acTL",control);
+    s.file->seek(s.actl_offset);s.file->write(out);s.file->commit();s.file.reset();s.finished=true;
+  }catch(...){s.failed=true;s.file.reset();throw;}
+}
+void write_apng(const std::string& path,const std::vector<Image>& frames,int fps,uint32_t loops){
+  if(frames.empty()||frames.size()>240)throw std::runtime_error("APNG frame count must be between 1 and 240");
+  ApngWriter writer(path,frames.front().width,frames.front().height,fps,loops);
+  for(const auto& frame:frames)writer.add_frame(frame);
+  writer.finish();
 }
 void write_ppm(const std::string& path,const Image& im){std::string header="P6\n"+std::to_string(im.width)+" "+std::to_string(im.height)+"\n255\n";std::vector<unsigned char>b(header.begin(),header.end());b.insert(b.end(),im.rgb.begin(),im.rgb.end());save(path,b);}
 }

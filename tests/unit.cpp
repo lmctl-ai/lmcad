@@ -198,6 +198,20 @@ int main(int argc,char** argv){try{
  auto raw=inflate_test(compressed);
  check(raw.size()==48*(64*3+1),"PNG decoded size");
  for(int y=0;y<48;y++){check(raw[y*193]==0,"PNG filter");for(int x=0;x<192;x++)check(raw[y*193+1+x]==a.rgb[y*192+x],"PNG decoded pixels differ");}
+ {
+   const auto target=dir+"/stream.apng";{std::ofstream f(target);f<<"previous";}auto original=read(target);
+   {lmcad::ApngWriter writer(target,64,48,30);writer.add_frame(a);check(read(target)==original,"animation published before finish");}
+   check(read(target)==original,"unfinished animation replaced output");
+   lmcad::ApngWriter writer(target,64,48,30);bool failed=false;
+   try{writer.finish();}catch(const std::exception&){failed=true;}check(failed,"empty animation finish accepted");
+   writer.add_frame(a);writer.add_frame(b);writer.finish();
+   auto saved=read(target);failed=false;try{writer.finish();}catch(const std::exception&){failed=true;}check(failed,"double finish accepted");
+   failed=false;try{writer.add_frame(a);}catch(const std::exception&){failed=true;}check(failed&&read(target)==saved,"add after finish accepted");
+   lmcad::write_apng(dir+"/batch.apng",{a,b},30);check(saved==read(dir+"/batch.apng"),"streamed APNG differs from batch output");
+   lmcad::Image pixel;pixel.width=1;pixel.height=1;pixel.rgb={1,2,3};lmcad::ApngWriter limited(dir+"/limit.apng",1,1,240);
+   for(int i=0;i<240;i++)limited.add_frame(pixel);
+   failed=false;try{limited.check_frame();}catch(const std::exception&){failed=true;}check(failed,"animation frame limit ignored");
+ }
  for(int fps:{1,24,30,60,239,240}){lmcad::write_apng(dir+"/rate.apng",{a,b},fps,3);auto rate=inspect_apng(dir+"/rate.apng");check(rate.delay==fps&&rate.frames==2&&rate.loops==3,"APNG exact rational FPS");}
  auto tween=inspect_apng(build+"/tween.apng"),turn=inspect_apng(build+"/turntable.apng");
  for(const auto* movie:{&tween,&turn})for(const auto& frame:movie->image_data){auto pixels=inflate_test(frame);check(pixels.size()==movie->height*(movie->width*3+1),"APNG decoded frame size");}
