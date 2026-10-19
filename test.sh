@@ -153,14 +153,14 @@ set +e; out="$("$HOST" --dsl "$WORK/no-camera.dslb" 2>&1)"; code=$?; set -e
 ok "camera required validation (exit 3)"
 cat > "$WORK/bad-supersample.lms" <<EOF2
 p = _dsl_ schema="$SCHEMA_PATH";
-scene.supersample(5);
+scene.supersample(9);
 end _dsl_
 savedsl(p, "$WORK/bad-supersample.dslb");
 EOF2
 "$LMSCRIPT" "$WORK/bad-supersample.lms" >/dev/null || fail "invalid supersample DSL compile"
 set +e; out="$($HOST --dsl "$WORK/bad-supersample.dslb" 2>&1)"; code=$?; set -e
-[ "$code" = 3 ] && [[ "$out" == *'supersample must be between 1 and 4'* ]] || fail "invalid supersample was accepted (exit $code): $out"
-ok "supersampling factor is bounded to 1..4"
+[ "$code" = 3 ] && [[ "$out" == *'supersample must be between 1 and 8'* ]] || fail "invalid supersample was accepted (exit $code): $out"
+ok "supersampling factor is bounded to 1..8"
 cat > "$WORK/bad-fillet.lms" <<EOF2
 p = _dsl_ schema="$SCHEMA_PATH";
 let shape = scene.box(10.0, 10.0, 10.0, material());

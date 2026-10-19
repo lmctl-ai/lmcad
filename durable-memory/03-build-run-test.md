@@ -29,9 +29,10 @@ exports, APNG structure and extracted frames, deterministic output, and invalid-
 `LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh`.
 
 The section example asserts that its two BRep half-volumes sum to the original 576.0. The polished mug's BRep volume is
-350.37572491370963; its closed STL mesh measures 350.153254, about 0.06% lower because curved faces are approximated by
-planar facets at the default 0.1 model-unit linear and 0.1-radian angular tessellation deflections. The mug profile avoids the raised
-collar transition and uses a 0.35-unit edge fillet for a continuous silhouette.
+344.08933973285542 and its closed STL mesh measures 343.629532 (0.13% lower). The vase BRep volume is 1708.2677036376435;
+its STL mesh measures 1739.390003 (1.82% higher). Curved faces are approximated by planar facets at the default 0.05 model-unit
+linear and 0.1-radian angular tessellation deflections. The mug uses a sampled smooth profile through the upper body and a
+0.35-unit edge fillet. The vase profile is a sampled cubic curve to avoid visible bands.
 
 The in-tree PNG/APNG writer uses deterministic LZ77 and fixed-Huffman DEFLATE, with stored blocks for incompressible data. APNG
 uses exact rational frame delays. Tests validate chunk CRCs and sequence, frame count, first-frame identity, changed frames, and

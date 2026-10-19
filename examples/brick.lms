@@ -1,13 +1,14 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/brick.dslb";
 p = _dsl_ schema="../schema/lmcad.dsl.json";
 scene.background(0.16, 0.20, 0.27);
-let red = material().color(0.88, 0.22, 0.12).roughness(0.26).specular(0.88).shininess(8.0);
+let red = material().color(0.78, 0.13, 0.07).roughness(0.38).specular(0.22).shininess(28.0);
+let stud_red = material().color(0.98, 0.27, 0.14).roughness(0.28).specular(0.72).shininess(16.0);
 let brick = scene.box(48.0, 9.6, 16.0, red).name("brick");
 for (ix in range(0, 6)) {
   for (iz in range(0, 2)) {
     let x = -20.0 + float(ix) * 8.0;
     let z = -4.0 + float(iz) * 8.0;
-    let stud = scene.cylinder(2.4, 1.8, red).position(x, 5.7, z);
+    let stud = scene.cylinder(2.4, 1.8, stud_red).position(x, 5.7, z);
     brick.union(stud);
     stud.visible(false);
   }

@@ -183,7 +183,12 @@ Mesh tessellate(const TopoDS_Shape& shape,double tolerance){
   std::map<VertexKey,std::vector<Vec3>> analytic_normals;
   for(const auto& t:out.triangles)for(auto corner:{std::pair<Vec3,Vec3>{t.a,t.na},{t.b,t.nb},{t.c,t.nc}})
     analytic_normals[{corner.first.x,corner.first.y,corner.first.z}].push_back(corner.second);
-  constexpr double smooth_seam_cos=0.95;
+  for(auto& entry:analytic_normals)std::sort(entry.second.begin(),entry.second.end(),[](Vec3 a,Vec3 b){
+    return std::tie(a.x,a.y,a.z)<std::tie(b.x,b.y,b.z);
+  });
+  // Blend gentle changes in sampled revolved profiles; square box edges stay
+  // sharp because their face normals are orthogonal.
+  constexpr double smooth_seam_cos=0.9;
   for(auto& t:out.triangles)for(auto corner:{std::pair<Vec3*,Vec3*>{&t.a,&t.na},{&t.b,&t.nb},{&t.c,&t.nc}}){
     Vec3 sum{};const auto& candidates=analytic_normals[{corner.first->x,corner.first->y,corner.first->z}];
     for(auto n:candidates)if(dot(*corner.second,n)>=smooth_seam_cos)sum=sum+n;

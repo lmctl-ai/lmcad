@@ -159,7 +159,7 @@ int main(int argc,char** argv){try{
  lmcad::Shape half;half.material.color={1,1,1};half.mesh.triangles={{{-1,-1,-1},{0,-1,-1},{0,1,-1}},{{-1,-1,-1},{0,1,-1},{-1,1,-1}}};
  auto half_pixel=lmcad::render({half},resolve_camera,unlit,{0,0,0},1,1,2);
  check(half_pixel.rgb==std::vector<unsigned char>({188,188,188}),"resolve averages encoded bytes instead of linear light");
- for(int samples:{1,2,3,4}){
+ for(int samples:{1,2,3,4,6,8}){
    auto native=lmcad::render({half},resolve_camera,unlit,{0.1,0.2,0.3},7*samples,5*samples,1);
    auto resolved=lmcad::render({half},resolve_camera,unlit,{0.1,0.2,0.3},7,5,samples);
    check(resolved.width==7&&resolved.height==5&&resolved.rgb.size()==105,"odd-size resolve dimensions");
@@ -169,7 +169,7 @@ int main(int argc,char** argv){try{
      check(resolved.rgb[(y*7+x)*3+c]==expected,"resolve misses an edge sample or colour channel");
    }
  }
- for(auto dims:std::vector<std::array<int,3>>{{1,1,0},{1,1,5},{2049,1,4},{1025,1025,4},{2147483647,1,1}}){
+ for(auto dims:std::vector<std::array<int,3>>{{1,1,0},{1,1,9},{2049,1,4},{1025,1025,4},{2147483647,1,1}}){
    bool refused=false;try{lmcad::render({},resolve_camera,unlit,{},dims[0],dims[1],dims[2]);}catch(const std::exception&){refused=true;}
    check(refused,"supersampling allocation limits bypassed");
  }

@@ -87,7 +87,7 @@ static Image render_native(const std::vector<Shape>& shapes,const Camera& camera
   return im;
 }
 Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& light,Color bg,int w,int h,int samples) {
-  if(samples<1||samples>4)throw std::runtime_error("supersample must be between 1 and 4");
+  if(samples<1||samples>8)throw std::runtime_error("supersample must be between 1 and 8");
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16777216)throw std::runtime_error("image dimensions exceed limits");
   const uint64_t sw=uint64_t(w)*samples, sh=uint64_t(h)*samples;
   if(sw>8192||sh>8192||sw*sh>16777216)throw std::runtime_error("supersampled image exceeds raster limits");

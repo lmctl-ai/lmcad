@@ -22,5 +22,5 @@ TopoDS_Shape extrude(const Sketch&,double height);
 TopoDS_Shape revolve_y(const Sketch&);
 double volume(const TopoDS_Shape&);
 std::array<double,6> bounds(const TopoDS_Shape&);
-Mesh tessellate(const TopoDS_Shape&,double tolerance=0.1);
+Mesh tessellate(const TopoDS_Shape&,double tolerance=0.05);
 }
