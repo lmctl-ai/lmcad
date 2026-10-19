@@ -30,7 +30,8 @@ DEFAULT_OCCT_PREFIX="$HERE/build/occt-prefix"
 [ -d "$DEFAULT_OCCT_PREFIX/include/opencascade" ] || DEFAULT_OCCT_PREFIX="$HERE/../occt-prefix"
 OCCT_PREFIX="${LMCAD_OCCT_PREFIX:-$DEFAULT_OCCT_PREFIX}"
 FULL_STATIC="${LMCAD_FULL_STATIC:-ON}"
-[ -d "$OCCT_PREFIX/include/opencascade" ] || fail "OCCT prefix not found: $OCCT_PREFIX (set LMCAD_OCCT_PREFIX)"
+# OCCT's Windows install layout has cmake/ + inc/ instead of lib/cmake/opencascade + include/opencascade.
+[ -d "$OCCT_PREFIX/include/opencascade" ] || [ -f "$OCCT_PREFIX/cmake/OpenCASCADEConfig.cmake" ] || fail "OCCT prefix not found: $OCCT_PREFIX (set LMCAD_OCCT_PREFIX)"
 cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMCAD_OCCT_PREFIX="$OCCT_PREFIX" -DLMCAD_FULL_STATIC="$FULL_STATIC"
 cmake --build "$BUILD_DIR" -j3
 ok "host and unit test build"
