@@ -212,7 +212,7 @@ cp .github/occt-cmake-flags.txt "$NPMART/"; cp scripts/build-occt.sh "$NPMART/"
 printf 'x' > "$NPMART/OCCT-LICENSE_LGPL_21.txt"; printf 'x' > "$NPMART/OCCT-LGPL-EXCEPTION.txt"
 printf 'x' > "$NPMART/GCC-TOOLCHAIN-COPYRIGHT"; printf 'x' > "$NPMART/GLIBC-COPYRIGHT"
 for p in linux-x64 linux-arm64 macos-x64 macos-arm64 windows-x64; do printf 'x' > "$NPMART/lmcad-$p"; done
-for p in linux-x64 linux-arm64; do tar -czf "$NPMART/lmcad-$p-relink-objects.tar.gz" -C "$NPMART" LICENSE; done
+for p in linux-x64 linux-arm64; do tar --force-local -czf "$NPMART/lmcad-$p-relink-objects.tar.gz" -C "$NPMART" LICENSE; done
 scripts/npm-layout.sh "$NPMART" "$WORK/npm-out" 1.2.3 >/dev/null || fail "npm layout"
 python3 - "$WORK/npm-out" <<'PY'
 import json,os,sys
