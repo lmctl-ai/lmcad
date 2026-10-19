@@ -1,13 +1,14 @@
 p = _dsl_ schema="../schema/lmcad.dsl.json";
 let keys = read_keyframes_csv("examples/data/keyframes.csv");
-let mat = material();
-let shape = scene.sphere(0.75, mat);
+let mat = material().specular(0.4).shininess(56.0);
+let shape = scene.sphere(1.15, mat);
 scene.camera(38.0, 0.0, 2.8, 8.0, 0.0, 0.0, 0.0);
-scene.directional_light(-0.4, -1.0, -0.5, 0.72);
-scene.fill_light(0.8, -0.2, 0.9, 0.42);
-scene.ambient(0.24);
-scene.background(0.04, 0.06, 0.1);
-let movie = scene.animation("build/tween.apng", 160, 120, 30);
+scene.directional_light(-0.35, -1.0, -0.25, 0.92);
+scene.fill_light(0.8, -0.2, 0.9, 0.22);
+scene.ambient(0.16);
+scene.background(0.10, 0.13, 0.18);
+scene.supersample(1);
+let movie = scene.animation("build/tween.apng", 320, 240, 30);
 let frames_per_segment = 30;
 for (segment in range(0, keys.len() - 1)) {
   let a = keys.at(segment);
@@ -25,7 +26,7 @@ for (segment in range(0, keys.len() - 1)) {
     let blue = lerp(a.b(), b.b(), e);
     shape.position(x, y, z).color(r, g, blue);
     let frame_index = segment * (frames_per_segment - 1) + step;
-    scene.render_png("build/tween-" + str(frame_index) + ".png", 160, 120);
+    scene.render_png("build/tween-" + str(frame_index) + ".png", 320, 240);
     movie.add_frame();
   }
 }

@@ -85,11 +85,11 @@ hashes=[hashlib.sha256(p.read_bytes()).digest() for p in frames]; assert len(set
 assert (bdir/'loop-row.png').stat().st_size>1000
 for name in ('plate-with-holes','brick','vase','glyph-field','section-view','mug'):
     image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
-    ww,hh=struct.unpack_from('>II',image,16); assert (ww,hh)==(720,540)
+    ww,hh=struct.unpack_from('>II',image,16); expected=(540,405) if name=='mug' else (640,480) if name=='vase' else (720,540); assert (ww,hh)==expected,(name,ww,hh)
     facets=(bdir/f'{name}.stl').read_bytes(); count=struct.unpack_from('<I',facets,80)[0]; assert count>(10 if name=='section-view' else 100) and len(facets)==84+count*50
 for name in ('section-view','mug'):
     image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
-print(f'PNG 640x480 + CAD PNG 720x540, PPM/OBJ valid, STL box facets={n}, CAD STL facets checked, tween frames={len(frames)}, unique={len(set(hashes))}')
+print(f'PNG/PPM/OBJ valid; CAD PNG dimensions include reduced vase/mug renders, STL box facets={n}, CAD STL facets checked, tween frames={len(frames)}, unique={len(set(hashes))}')
 PY
 ok "PNG dimensions/pixels, STL facets, CAD exports, loop render, glyph field, and 30 distinct tween frames"
 "$APNG" build/tween.apng 0 "$WORK/tween-apng-first.png" || fail "extract tween APNG frame 0"

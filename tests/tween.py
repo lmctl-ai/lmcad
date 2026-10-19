@@ -39,7 +39,7 @@ reference = source.split('let frames_per_segment')[0] + f'''
 for (i in range(0, keys.len())) {{
   let key = keys.at(i);
   shape.position(key.x(), key.y(), key.z()).color(key.r(), key.g(), key.b());
-  scene.render_png("{work.as_posix()}/ref-" + str(i) + ".png", 160, 120);
+  scene.render_png("{work.as_posix()}/ref-" + str(i) + ".png", 320, 240);
 }}
 end _dsl_
 '''
