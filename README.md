@@ -5,10 +5,10 @@
 ## Requirements
 
 - C++17 compiler, CMake 3.24+, Ninja.
-- Node.js with TypeScript stripping (`node --experimental-strip-types`) and the sibling `~/lmctl-mono/lmscript` checkout for v4 DSL compilation. `LMSCRIPT_SOURCE` can point `scripts/lmscript-mono.mjs` at another checkout.
+- Node.js with TypeScript stripping (`node --experimental-strip-types`) and a `~/lmctl-mono/lmscript` checkout for v4 DSL compilation. `LMSCRIPT_SOURCE` can point `scripts/lmscript-mono.mjs` at another checkout.
 - Python 3 for the integration checks. The native renderer has no third-party runtime library.
 
-The released `lmscript` on PATH is still v3 and cannot compile the v4 examples. `scripts/lmscript-mono.sh` is a thin adapter around the in-tree `dsl.ts` compiler; it does not install packages or modify that checkout.
+The released `lmscript` on PATH is still v3 and cannot compile the v4 examples. `scripts/lmscript-mono.sh` is a thin adapter around the in-tree `dsl.ts` compiler; it does not install packages or modify that checkout. It supports exactly one standalone DSL block, not general lmscript execution. Supply an output argument unless `savedsl` uses a literal path for that block. The default compiler location is relative to the current user’s home, independent of where lmcad is cloned; set `LMSCRIPT_SOURCE` when the compiler lives elsewhere.
 
 ## Build and run
 
