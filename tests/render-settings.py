@@ -3,11 +3,18 @@ import json,os,subprocess,sys
 from pathlib import Path
 work=Path(sys.argv[1])/'render-settings';work.mkdir(exist_ok=True)
 compiler=os.environ['LMSCRIPT_BIN'];host=os.environ['LMCAD_HOST']
+
+def compiler_cmd(c):
+    # Native Windows Python cannot exec the bash/npm shim directly; npm
+    # global installs provide a .cmd sibling that cmd.exe can run.
+    if sys.platform == 'win32' and os.path.exists(c + '.cmd'):
+        return ['cmd.exe', '/c', c + '.cmd']
+    return [c]
 schema=Path('schema/lmcad.dsl.json').resolve()
 def run(name,body,error=None):
  source=work/(name+'.lms');bytecode=work/(name+'.dslb')
  source.write_text(f'p = _dsl_ schema={json.dumps(str(schema))};\n{body}\nend _dsl_\nsavedsl(p,{json.dumps(str(bytecode))});\n')
- subprocess.run([compiler,str(source)],check=True,capture_output=True)
+ subprocess.run(compiler_cmd(compiler)+[str(source)],check=True,capture_output=True)
  r=subprocess.run([host,'--dsl',str(bytecode)],capture_output=True,text=True,timeout=30)
  assert r.returncode==(3 if error else 0),(name,r)
  if error: assert error in json.loads(r.stdout)['message'],(name,r)

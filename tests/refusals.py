@@ -8,13 +8,20 @@ import sys
 root = Path.cwd()
 work = Path(sys.argv[1])
 compiler = os.environ.get('LMSCRIPT_BIN', 'lmscript')
+
+def compiler_cmd(c):
+    # Native Windows Python cannot exec the bash/npm shim directly; npm
+    # global installs provide a .cmd sibling that cmd.exe can run.
+    if sys.platform == 'win32' and os.path.exists(c + '.cmd'):
+        return ['cmd.exe', '/c', c + '.cmd']
+    return [c]
 host = os.environ.get('LMCAD_HOST', 'build/lmcad')
 
 def refuses(name, body, error):
     source = work / (name + '.lms')
     bytecode = work / (name + '.dslb')
     source.write_text(f'p = _dsl_ schema="{root}/schema/lmcad.dsl.json";\n{body}\nend _dsl_\nsavedsl(p, "{bytecode}");\n')
-    subprocess.run([compiler, str(source)], check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(compiler_cmd(compiler)+[ str(source)], check=True, stdout=subprocess.DEVNULL)
     run = subprocess.run([host, '--dsl', str(bytecode)], capture_output=True, text=True)
     assert run.returncode == 3 and error in run.stdout, (name, run.returncode, run.stdout, run.stderr)
 
@@ -45,7 +52,7 @@ for (i in range(0, 100)) { read_keyframes_csv("examples/data/keyframes.csv"); }
 scene.background(first.r(), first.g(), first.b());'''
 source = work / 'stable-rows.lms'; bytecode = work / 'stable-rows.dslb'
 source.write_text(f'p = _dsl_ schema="{root}/schema/lmcad.dsl.json";\n{body}\nend _dsl_\nsavedsl(p, "{bytecode}");\n')
-subprocess.run([compiler, str(source)], check=True, stdout=subprocess.DEVNULL)
+subprocess.run(compiler_cmd(compiler)+[ str(source)], check=True, stdout=subprocess.DEVNULL)
 subprocess.run([host, '--dsl', str(bytecode)], check=True, stdout=subprocess.DEVNULL)
 for index in [-1, 2]:
     refuses('keyframe-index', f'let keys = read_keyframes_csv("examples/data/keyframes.csv"); keys.at({index});', 'keyframe index out of range')

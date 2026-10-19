@@ -7,6 +7,13 @@ import sys
 
 work = Path(sys.argv[1])
 compiler = os.environ['LMSCRIPT_BIN']
+
+def compiler_cmd(c):
+    # Native Windows Python cannot exec the bash/npm shim directly; npm
+    # global installs provide a .cmd sibling that cmd.exe can run.
+    if sys.platform == 'win32' and os.path.exists(c + '.cmd'):
+        return ['cmd.exe', '/c', c + '.cmd']
+    return [c]
 host = os.environ['LMCAD_HOST']
 schema = str(Path('schema/lmcad.dsl.json').resolve())
 csv = work / 'three.csv'
@@ -21,7 +28,7 @@ def run(name, text):
     elif 'savedsl(' not in text:
         text += f'\nsavedsl(p, {json.dumps(str(output))});\n'
     path.write_text(text)
-    subprocess.run([compiler, str(path), str(output)], check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(compiler_cmd(compiler)+[ str(path), str(output)], check=True, stdout=subprocess.DEVNULL)
     subprocess.run([host, '--dsl', str(output)], check=True, stdout=subprocess.DEVNULL)
 
 run('multi', source)
