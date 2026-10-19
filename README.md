@@ -47,7 +47,8 @@ The final AArch64 binary in this configuration is 26,758,520 bytes (25.5 MiB). S
 ## CLI
 
 ```sh
-build/lmcad --schema > /tmp/lmcad-schema.json
+build/lmcad --schema
+build/lmcad --schema --json > /tmp/lmcad-schema.json
 cmp schema/lmcad.dsl.json /tmp/lmcad-schema.json
 build/lmcad --dsl-signatures
 scripts/lmscript-mono.sh --dsl-signatures schema/lmcad.dsl.json
@@ -55,9 +56,9 @@ scripts/lmscript-mono.sh examples/still-life.lms build/still-life.dslb
 build/lmcad --dsl build/still-life.dslb
 ```
 
-`--schema` prints the embedded schema bytes exactly. `--dsl-signatures` prints the host registry's canonical signature list, which must match the compiler's output for the schema. `--dsl FILE [FILE ...]` executes bytecode files in argument order, using one embedded schema and the same host context for every block. Each file has fresh VM locals, while shapes, materials, camera and other host state persist across files. Execution stops on the first load or runtime error (exit 3); previous outputs and any output already written by the failing block remain. Each completed block prints one success JSON line, followed by an error JSON line if a later block fails. All command-line arguments are validated before execution (invalid syntax exits 2). The old `--schema FILE` input form is removed.
+`--schema` prints a compact registry-derived summary with context first, then free functions and members grouped by type. `--schema --json` prints the embedded schema bytes exactly. `--dsl-signatures` prints the host registry's canonical signature list, which must match the compiler's output for the schema. `--dsl FILE [FILE ...]` executes bytecode files in argument order, using one embedded schema and the same host context for every block. Each file has fresh VM locals, while shapes, materials, camera and other host state persist across files. Execution stops on the first load or runtime error (exit 3); previous outputs and any output already written by the failing block remain. Each completed block prints one success JSON line, followed by an error JSON line if a later block fails. All command-line arguments are validated before execution (invalid syntax exits 2). The old `--schema FILE` input form is removed.
 
-The examples cover a lit still life, STL export, a range-loop row, CSV-driven tweening, a plate with a loop of through-holes, a hollow brick with loop-generated studs, and a revolved hollow vase. `fit_camera()` frames visible shapes; OCCT tessellation computes smooth normals across curved faces while keeping sharp edges. Boolean operations and solid-volume assertions use the BRep geometry. To compile and run them individually:
+The examples cover a lit still life, STL export, a range-loop row, CSV-driven tweening, a plate with a loop of through-holes, a hollow brick with loop-generated studs, a revolved hollow vase, and a 5x5 scalar-colored glyph field. `fit_camera(fov, margin)` frames visible shapes; scene settings provide key and fill lights, ambient level, and bounded 1..4 supersampling (default 2). OCCT tessellation computes smooth normals across curved faces while keeping sharp edges. Boolean operations and solid-volume assertions use the BRep geometry. To compile and run them individually:
 
 ```sh
 scripts/lmscript-mono.sh examples/still-life.lms build/still-life.dslb
@@ -74,6 +75,8 @@ scripts/lmscript-mono.sh examples/vase.lms build/vase.dslb
 build/lmcad --dsl build/plate-with-holes.dslb
 build/lmcad --dsl build/brick.dslb
 build/lmcad --dsl build/vase.dslb
+scripts/lmscript-mono.sh examples/glyph-field.lms build/glyph-field.dslb
+build/lmcad --dsl build/glyph-field.dslb
 ```
 
 ## Checks
@@ -87,4 +90,4 @@ cmake -S . -B build-sanitize -G Ninja -DCMAKE_BUILD_TYPE=Release \
 LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh
 ```
 
-The test script checks SDK pinning, v5 example compilation, embedded schema byte identity, compiler/host signature consistency, sequential multi-file execution, PNG contents and determinism, 12-triangle box STL, tween output, CAD PNG/STL exports, CAD operation volume assertions, and host-side validation refusals. The SDK loader rejects every bytecode version except v5. See [`durable-memory/03-build-run-test.md`](durable-memory/03-build-run-test.md), [`durable-memory/04-gotchas.md`](durable-memory/04-gotchas.md), and [`durable-memory/05-open-items.md`](durable-memory/05-open-items.md).
+The test script checks SDK pinning, v5 example compilation, JSON schema byte identity, complete summary/signature consistency, sequential multi-file execution, PNG contents and determinism, bounded supersampling, 12-triangle box STL, tween output, CAD PNG/STL exports, CAD operation volume assertions, and host-side validation refusals. The SDK loader rejects every bytecode version except v5. See [`durable-memory/03-build-run-test.md`](durable-memory/03-build-run-test.md), [`durable-memory/04-gotchas.md`](durable-memory/04-gotchas.md), and [`durable-memory/05-open-items.md`](durable-memory/05-open-items.md).

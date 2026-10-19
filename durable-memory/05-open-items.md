@@ -34,3 +34,10 @@ let z = -4.0 + float(iz) * 8.0;
 ```
 
 A more convenient form would allow safe widening of `int` to `float` in mixed numeric arithmetic, so the same code could write `-20.0 + ix * 8.0`. No compiler or SDK change was made; current scripts keep the explicit casts.
+
+### Step 10 notes
+
+- Added a scene-wide `fit_camera(fov, margin)` helper over visible shape bounds, key/fill directional lights, ambient level, and deterministic 1..4 supersampling (host default 2). Supersampled dimensions still use the rasterizer's 16,777,216-pixel internal limit; at factor 4 this means output images may need to stay at or below 1,048,576 pixels.
+- Step 10's glyph-field example uses loops and script-side `lerp()` for the scalar color ramp. That DSL was readable; no new friction found. Existing loop arithmetic still requires explicit `float(i)` casts (see Step 9 note).
+- The glyph example uses spheres colored by a scalar over a 5x5 grid, inspired by the ranked PyVista glyph reference. It has no single meaningful solid volume because each sphere is a separate instance.
+- Plain `lmcad --schema` now mirrors lmhtml's compact, registry-derived format; `--schema --json` returns the exact embedded schema bytes.
