@@ -1,6 +1,8 @@
 #include "render.hpp"
 #include "cad.hpp"
 #include "atomic-file.hpp"
+#include "deflate.hpp"
+#include "inflate.hpp"
 #include <filesystem>
 #include <csignal>
 #include <sys/resource.h>
@@ -16,7 +18,6 @@
 #include <vector>
 namespace {
 uint32_t crc(const unsigned char* p,size_t n){uint32_t c=0xffffffffu;for(size_t i=0;i<n;i++){c^=p[i];for(int b=0;b<8;b++)c=(c>>1)^(0xedb88320u&uint32_t(-int(c&1)));}return c^0xffffffffu;}
-uint32_t adler(const std::vector<unsigned char>& v){uint32_t a=1,b=0;for(auto x:v){a=(a+x)%65521;b=(b+a)%65521;}return(b<<16)|a;}
 uint32_t be32(const std::vector<unsigned char>& b,size_t i){return(uint32_t(b[i])<<24)|(uint32_t(b[i+1])<<16)|(uint32_t(b[i+2])<<8)|b[i+3];}
 std::vector<unsigned char> read(const std::string& p){std::ifstream f(p,std::ios::binary);if(!f)throw std::runtime_error("cannot read "+p);return {std::istreambuf_iterator<char>(f),{}};}
 void check(bool ok,const char* what){if(!ok)throw std::runtime_error(what);}
@@ -48,6 +49,16 @@ ApngInfo inspect_apng(const std::string& path){
 int main(int argc,char** argv){try{
  if(argc!=3)throw std::runtime_error("usage: lmcad-unit OUTPUT_DIR BUILD_DIR");
  std::string dir=argv[1],build=argv[2];
+ { std::vector<unsigned char> repetitive(200000,42),noise(200000);uint32_t seed=12345;
+   for(auto& v:noise){seed^=seed<<13;seed^=seed>>17;seed^=seed<<5;v=seed&255;}
+   auto mixed=noise;mixed.insert(mixed.end(),noise.begin(),noise.begin()+32768);
+   for(const auto& data:std::vector<std::vector<unsigned char>>{{},{0},{1,2},repetitive,noise,mixed}){
+     auto encoded=lmcad::deflate_zlib(data);check(inflate_test(encoded)==data,"DEFLATE round trip");check(encoded==lmcad::deflate_zlib(data),"DEFLATE determinism");
+   }
+   check(lmcad::deflate_zlib(repetitive).size()<repetitive.size()/50,"DEFLATE compression ratio");
+   check(lmcad::deflate_zlib(noise).size()<noise.size()+100,"DEFLATE stored fallback");
+ }
+
  { const auto target=dir+"/atomic.png";
    {std::ofstream f(target);f<<"previous";}
    auto original=read(target);
@@ -184,11 +195,12 @@ int main(int argc,char** argv){try{
   pos+=n+4;if(type=="IEND"){iend=true;break;}
  }
  check(ihdr&&iend&&srgb&&!compressed.empty(),"missing required PNG chunks");check(compressed.size()>=6,"truncated zlib stream");
- std::vector<unsigned char> raw;size_t z=2;bool final=false;
- while(!final){check(z+5<=compressed.size()-4,"truncated stored deflate block");unsigned char hdr=compressed[z++];final=(hdr&1)!=0;check((hdr&6)==0,"PNG writer did not use stored deflate blocks");uint16_t len=uint16_t(compressed[z])|uint16_t(compressed[z+1])<<8;uint16_t inv=uint16_t(compressed[z+2])|uint16_t(compressed[z+3])<<8;z+=4;check(uint16_t(~len)==inv,"bad stored deflate length complement");check(z+len<=compressed.size()-4,"truncated stored deflate data");raw.insert(raw.end(),compressed.begin()+z,compressed.begin()+z+len);z+=len;}
- uint32_t expected=(uint32_t(compressed[compressed.size()-4])<<24)|(uint32_t(compressed[compressed.size()-3])<<16)|(uint32_t(compressed[compressed.size()-2])<<8)|compressed.back();check(adler(raw)==expected,"PNG Adler-32 mismatch");
+ auto raw=inflate_test(compressed);
+ check(raw.size()==48*(64*3+1),"PNG decoded size");
+ for(int y=0;y<48;y++){check(raw[y*193]==0,"PNG filter");for(int x=0;x<192;x++)check(raw[y*193+1+x]==a.rgb[y*192+x],"PNG decoded pixels differ");}
  for(int fps:{1,24,30,60,239,240}){lmcad::write_apng(dir+"/rate.apng",{a,b},fps,3);auto rate=inspect_apng(dir+"/rate.apng");check(rate.delay==fps&&rate.frames==2&&rate.loops==3,"APNG exact rational FPS");}
  auto tween=inspect_apng(build+"/tween.apng"),turn=inspect_apng(build+"/turntable.apng");
+ for(const auto* movie:{&tween,&turn})for(const auto& frame:movie->image_data){auto pixels=inflate_test(frame);check(pixels.size()==movie->height*(movie->width*3+1),"APNG decoded frame size");}
  check(tween.frames==30&&tween.loops==0&&tween.image_data.size()==30,"tween APNG frame/loop count");
  check(turn.frames==36&&turn.loops==0&&turn.image_data.size()==36,"turntable APNG frame/loop count");
  check(tween.width==160&&tween.height==120&&turn.width==160&&turn.height==120,"APNG dimensions");
