@@ -47,7 +47,12 @@ public:
     std::string pattern=(slash==std::string::npos?"./":path.substr(0,slash+1))+".lmcad-XXXXXX";
     std::vector<char> name(pattern.begin(),pattern.end());name.push_back(0);
     int fd=mkstemp(name.data());if(fd<0)throw std::runtime_error("cannot create output: "+path);
-    temporary_=name.data();file_=fdopen(fd,"w+b");
+    temporary_=name.data();
+    // mkstemp always starts at 0600. Match ordinary open(path, O_CREAT, 0666)
+    // semantics while retaining its race-safe same-directory temporary name.
+    const mode_t mask=umask(0);umask(mask);
+    if(fchmod(fd,static_cast<mode_t>(0666&~mask))){close(fd);unlink(temporary_.c_str());throw std::runtime_error("cannot set output permissions: "+path);}
+    file_=fdopen(fd,"w+b");
     if(!file_){close(fd);unlink(temporary_.c_str());throw std::runtime_error("cannot open output: "+path);}
 #endif
   }

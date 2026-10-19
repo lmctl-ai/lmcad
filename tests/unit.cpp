@@ -82,6 +82,22 @@ int main(int argc,char** argv){try{
 #endif
    for(const auto& entry:std::filesystem::directory_iterator(dir))check(entry.path().filename().string().rfind(".lmcad-",0)!=0,"failed output leaked temporary file");
  }
+#ifndef _WIN32
+ {
+   const mode_t old_mask=umask(0027);
+   const lmcad::Image pixel{1,1,{12,34,56}};
+   lmcad::write_png(dir+"/mode.png",pixel);
+   lmcad::write_ppm(dir+"/mode.ppm",pixel);
+   lmcad::write_apng(dir+"/mode.apng",{pixel},30);
+   lmcad::write_stl(dir+"/mode.stl",{});
+   lmcad::write_obj(dir+"/mode.obj",{});
+   umask(old_mask);
+   for(const auto& name:{"mode.png","mode.ppm","mode.apng","mode.stl","mode.obj"}){
+     struct stat st{};check(stat((dir+"/"+name).c_str(),&st)==0,"written output missing");
+     check((st.st_mode&0777)==0640,(std::string(name)+" ignored the process umask").c_str());
+   }
+ }
+#endif
  for(auto named_mesh:std::vector<std::pair<std::string,lmcad::Mesh>>{{"box",lmcad::cad::tessellate(lmcad::cad::box(2,2,2))},{"sphere",lmcad::cad::tessellate(lmcad::cad::sphere(1))},{"cylinder",lmcad::cad::tessellate(lmcad::cad::cylinder(1,2))}}) {
    lmcad::Shape shape;shape.mesh=named_mesh.second;
    for(auto scale:{lmcad::Vec3{1,1,1},lmcad::Vec3{-1,1,1},lmcad::Vec3{-1,-1,1}}) {
@@ -99,6 +115,29 @@ int main(int argc,char** argv){try{
  rt.na=lmcad::transform_normal(reflected,smooth.na);rt.nb=lmcad::transform_normal(reflected,smooth.nc);rt.nc=lmcad::transform_normal(reflected,smooth.nb);rt.smooth=true;baked.mesh.triangles={rt};
  lmcad::Camera reflectcam;reflectcam.eye={0,0,5};reflectcam.target={0,0,0};
  check(lmcad::render({reflected},reflectcam,{}, {},63,47).rgb==lmcad::render({baked},reflectcam,{}, {},63,47).rgb,"reflection swapped vertices without their smooth normals");
+ {
+   const auto sphere=lmcad::cad::tessellate(lmcad::cad::sphere(1));
+   for(const auto& t:sphere.triangles)for(auto p_n:{std::pair<lmcad::Vec3,lmcad::Vec3>{t.a,t.na},{t.b,t.nb},{t.c,t.nc}})
+     check(lmcad::dot(lmcad::normalized(p_n.first),lmcad::normalized(p_n.second))>0.995,"sphere tessellation lacks analytic smooth normals");
+   const auto cube=lmcad::cad::tessellate(lmcad::cad::box(2,2,2));
+   auto same=[](lmcad::Vec3 p,lmcad::Vec3 q){return p.x==q.x&&p.y==q.y&&p.z==q.z;};
+   auto normal_at=[&](const lmcad::Triangle& t,lmcad::Vec3 p){if(same(t.a,p))return t.na;if(same(t.b,p))return t.nb;return t.nc;};
+   bool has_sharp_corner=false;
+   for(size_t i=0;i<cube.triangles.size();++i)for(size_t j=i+1;j<cube.triangles.size();++j){
+     const auto& a=cube.triangles[i];const auto& b=cube.triangles[j];
+     for(auto p:{a.a,a.b,a.c})for(auto q:{b.a,b.b,b.c})if(same(p,q)&&lmcad::dot(normal_at(a,p),normal_at(b,p))<0.99)has_sharp_corner=true;
+   }
+   check(has_sharp_corner,"box B-rep edges were smoothed across faces");
+ }
+ {
+   lmcad::Camera camera;camera.eye={0,0,5};camera.target={0,0,0};
+   lmcad::Light light;light.direction={0,0,-1};light.intensity=1;light.fill_intensity=0;light.ambient=0;
+   lmcad::Shape shape;shape.material.color={0.1,0.3,0.5};
+   shape.mesh.triangles={{{-2,-2,0},{2,-2,0},{0,2,0}}};
+   auto matte=lmcad::render({shape},camera,light,{},31,31);shape.material.specular_strength=.8;shape.material.shininess=16;
+   auto glossy=lmcad::render({shape},camera,light,{},31,31);size_t center=(15*31+15)*3;
+   check(glossy.rgb[center]>matte.rgb[center]&&glossy.rgb[center+1]>matte.rgb[center+1],"Blinn-Phong specular highlight missing");
+ }
  for(double deflection:{0.0,1e-100,1000000.0,std::numeric_limits<double>::infinity()}){
    bool refused=false;try{lmcad::cad::tessellate(lmcad::cad::box(1,1,1),deflection);}catch(const std::exception&){refused=true;}
    check(refused,"unbounded tessellation deflection accepted");
@@ -227,7 +266,7 @@ int main(int argc,char** argv){try{
  for(const auto* movie:{&tween,&turn})for(const auto& frame:movie->image_data){auto pixels=inflate_test(frame);check(pixels.size()==movie->height*(movie->width*3+1),"APNG decoded frame size");}
  check(tween.frames==30&&tween.loops==0&&tween.image_data.size()==30,"tween APNG frame/loop count");
  check(turn.frames==36&&turn.loops==0&&turn.image_data.size()==36,"turntable APNG frame/loop count");
- check(tween.width==160&&tween.height==120&&turn.width==160&&turn.height==120,"APNG dimensions");
+ check(tween.width==320&&tween.height==240&&turn.width==160&&turn.height==120,"APNG dimensions");
  check(tween.delay==30&&turn.delay==24,"APNG frame delay does not match requested FPS");
  auto first_png=read(build+"/tween-0.png");pos=8;std::vector<unsigned char> first_idat;
  while(pos+12<=first_png.size()){uint32_t n=be32(first_png,pos);std::string type(reinterpret_cast<const char*>(first_png.data()+pos+4),4);if(type=="IDAT")first_idat.insert(first_idat.end(),first_png.begin()+pos+8,first_png.begin()+pos+8+n);pos+=size_t(n)+12;if(type=="IEND")break;}

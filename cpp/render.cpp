@@ -64,8 +64,23 @@ static Image render_native(const std::vector<Shape>& shapes,const Camera& camera
       double zz=1.0/(a/v[0].z+b/v[1].z+c/v[2].z); size_t at=static_cast<size_t>(y)*w+x; if(zz>=depth[at])continue; depth[at]=zz;
       long double wa=a/v[0].z,wb=b/v[1].z,wc=c/v[2].z,sum=wa+wb+wc;Vec3 normal;
       try{normal=normalized((v[0].normal*static_cast<double>(wa)+v[1].normal*static_cast<double>(wb)+v[2].normal*static_cast<double>(wc))/static_cast<double>(sum));}catch(...){normal=face_normal;}
-      double diffuse=std::max(0.0,dot(normal,tolight))*light.intensity+std::max(0.0,dot(normal,filllight))*light.fill_intensity;double shade=light.ambient+(1.0-light.ambient)*std::min(1.0,diffuse);
-      im.rgb[3*at]=channel(shape.material.color.r*shade);im.rgb[3*at+1]=channel(shape.material.color.g*shade);im.rgb[3*at+2]=channel(shape.material.color.b*shade);
+      double key_diffuse=std::max(0.0,dot(normal,tolight))*light.intensity;
+      double fill_diffuse=std::max(0.0,dot(normal,filllight))*light.fill_intensity;
+      double shade=light.ambient+(1.0-light.ambient)*std::min(1.0,key_diffuse+fill_diffuse);
+      const double cx=static_cast<double>((wa*v[0].x+wb*v[1].x+wc*v[2].x)/sum);
+      const double cy=static_cast<double>((wa*v[0].y+wb*v[1].y+wc*v[2].y)/sum);
+      Vec3 view;
+      try{view=normalized(right*(-cx)+up*(-cy)+forward*(-zz));}catch(...){view=forward*-1.0;}
+      auto specular=[&](Vec3 direction,double diffuse){
+        if(diffuse<=0||shape.material.specular_strength<=0)return 0.0;
+        try{return std::pow(std::max(0.0,dot(normal,normalized(direction+view))),shape.material.shininess)*
+                   shape.material.specular_strength*diffuse;}
+        catch(...){return 0.0;}
+      };
+      const double highlight=std::min(1.0,specular(tolight,key_diffuse)+specular(filllight,fill_diffuse));
+      im.rgb[3*at]=channel(shape.material.color.r*shade+highlight);
+      im.rgb[3*at+1]=channel(shape.material.color.g*shade+highlight);
+      im.rgb[3*at+2]=channel(shape.material.color.b*shade+highlight);
     }
     }
   }

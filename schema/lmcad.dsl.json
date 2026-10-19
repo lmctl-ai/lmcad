@@ -410,6 +410,22 @@
             ],
             "returns": "Material"
           }
+        ],
+        "specular": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Material"
+          }
+        ],
+        "shininess": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Material"
+          }
         ]
       }
     },

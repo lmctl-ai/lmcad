@@ -32,6 +32,9 @@ for which in ['fill','key']:
 for method in ['fill_light','directional_light']:
  for args,error in [('0.0,0.0,0.0,1.0','nonzero'),('1.0,0.0,0.0,-1.0','negative'),('sqrt(-1.0),0.0,0.0,1.0','finite')]:
   run('invalid-light',f'scene.{method}({args});',error)
+run('material-finish','let m=material().specular(0.6).shininess(72.0); scene.box(1.0,1.0,1.0,m);')
+for expr,error in [('material().specular(-0.1)','specular strength'),('material().specular(1.1)','specular strength'),('material().shininess(0.0)','shininess'),('material().shininess(257.0)','shininess')]:
+ run('invalid-material-finish',expr+';',''+error)
 for ambient in ['-0.1','sqrt(-1.0)']:
  run('invalid-ambient',f'scene.ambient({ambient});','ambient level')
 print('independent light handles and finite bounded lighting settings pass')

@@ -40,8 +40,8 @@
 #include <Standard_Failure.hxx>
 #include <cmath>
 #include <algorithm>
-#include <stdexcept>
 #include <map>
+#include <stdexcept>
 #include <tuple>
 
 namespace lmcad::cad {
@@ -126,21 +126,66 @@ Mesh tessellate(const TopoDS_Shape& shape,double tolerance){
   size_t faces=0,edges=0;
   for(TopExp_Explorer e(shape,TopAbs_FACE);e.More();e.Next())if(++faces>2000)throw std::runtime_error("CAD face limit exceeded (2000)");
   for(TopExp_Explorer e(shape,TopAbs_EDGE);e.More();e.Next())if(++edges>10000)throw std::runtime_error("CAD edge limit exceeded (10000)");
-  BRepMesh_IncrementalMesh mesher(shape,tolerance,false,0.35,false);if(!mesher.IsDone())throw std::runtime_error("BRepMesh tessellation failed");Mesh out;
-  for(TopExp_Explorer e(shape,TopAbs_FACE);e.More();e.Next()){TopoDS_Face f=TopoDS::Face(e.Current());TopLoc_Location loc;Handle(Poly_Triangulation) tri=BRep_Tool::Triangulation(f,loc);if(tri.IsNull())continue;const gp_Trsf tr=loc.Transformation();for(int i=1;i<=tri->NbTriangles();++i){int a,b,c;tri->Triangle(i).Get(a,b,c);gp_Pnt pa=tri->Node(a).Transformed(tr),pb=tri->Node(b).Transformed(tr),pc=tri->Node(c).Transformed(tr);if(f.Orientation()==TopAbs_REVERSED)std::swap(pb,pc);Vec3 va{pa.X(),pa.Y(),pa.Z()},vb{pb.X(),pb.Y(),pb.Z()},vc{pc.X(),pc.Y(),pc.Z()};Vec3 area=cross(vb-va,vc-va);double area2=dot(area,area);if(!(area2>0)||!std::isfinite(area2))continue;if(out.triangles.size()>=1000000)throw std::runtime_error("CAD triangle limit exceeded (1000000)");out.triangles.push_back({va,vb,vc});}}
+  BRepMesh_IncrementalMesh mesher(shape,tolerance,false,0.15,false);if(!mesher.IsDone())throw std::runtime_error("BRepMesh tessellation failed");Mesh out;
+  for(TopExp_Explorer e(shape,TopAbs_FACE);e.More();e.Next()){
+    TopoDS_Face f=TopoDS::Face(e.Current());
+    TopLoc_Location loc;Handle(Poly_Triangulation) tri=BRep_Tool::Triangulation(f,loc);if(tri.IsNull())continue;
+    const gp_Trsf tr=loc.Transformation();BRepAdaptor_Surface surface(f,true);
+    auto normal_at=[&](int node,Vec3 fallback){
+      try{
+        if(tri->HasUVNodes()){
+          const gp_Pnt2d uv=tri->UVNode(node);gp_Pnt point;gp_Vec du,dv;surface.D1(uv.X(),uv.Y(),point,du,dv);
+          gp_Vec n=du.Crossed(dv);if(f.Orientation()==TopAbs_REVERSED)n.Reverse();
+          return normalized({n.X(),n.Y(),n.Z()});
+        }
+        if(tri->HasNormals()){
+          gp_Dir n=tri->Normal(node);gp_Vec v(n);v.Transform(tr);if(f.Orientation()==TopAbs_REVERSED)v.Reverse();
+          return normalized({v.X(),v.Y(),v.Z()});
+        }
+      }catch(const Standard_Failure&){}catch(const std::exception&){}
+      return fallback;
+    };
+    for(int i=1;i<=tri->NbTriangles();++i){
+      int a,b,c;tri->Triangle(i).Get(a,b,c);
+      gp_Pnt pa=tri->Node(a).Transformed(tr),pb=tri->Node(b).Transformed(tr),pc=tri->Node(c).Transformed(tr);
+      Vec3 va{pa.X(),pa.Y(),pa.Z()},vb{pb.X(),pb.Y(),pb.Z()},vc{pc.X(),pc.Y(),pc.Z()};
+      Vec3 area=cross(vb-va,vc-va);if(f.Orientation()==TopAbs_REVERSED)area=area*-1.0;
+      double area2=dot(area,area);if(!(area2>0)||!std::isfinite(area2))continue;
+      if(out.triangles.size()>=1000000)throw std::runtime_error("CAD triangle limit exceeded (1000000)");
+      Vec3 flat=normalized(area);Triangle t{va,vb,vc};t.na=normal_at(a,flat);t.nb=normal_at(b,flat);t.nc=normal_at(c,flat);t.smooth=true;
+      if(f.Orientation()==TopAbs_REVERSED){std::swap(t.b,t.c);std::swap(t.nb,t.nc);}
+      out.triangles.push_back(t);
+    }
+  }
   if(out.triangles.empty())throw std::runtime_error("shape tessellated to no triangles");
   // OCCT may enumerate identical faces in different orders across processes.
-  // Preserve winding, but canonicalize cyclic corners and triangle traversal
-  // before accumulating normals or writing mesh bytes.
+  // Preserve winding and canonicalize cyclic corners and triangle traversal.
   auto point_less=[](Vec3 a,Vec3 b){return std::tie(a.x,a.y,a.z)<std::tie(b.x,b.y,b.z);};
   for(auto& t:out.triangles){
-    if(point_less(t.b,t.a)&&point_less(t.b,t.c)){auto a=t.a;t.a=t.b;t.b=t.c;t.c=a;}
-    else if(point_less(t.c,t.a)){auto a=t.a;t.a=t.c;t.c=t.b;t.b=a;}
+    if(point_less(t.b,t.a)&&point_less(t.b,t.c)){
+      auto a=t.a,na=t.na;t.a=t.b;t.na=t.nb;t.b=t.c;t.nb=t.nc;t.c=a;t.nc=na;
+    } else if(point_less(t.c,t.a)){
+      auto a=t.a,na=t.na;t.a=t.c;t.na=t.nc;t.c=t.b;t.nc=t.nb;t.b=a;t.nb=na;
+    }
   }
   std::sort(out.triangles.begin(),out.triangles.end(),[](const Triangle& a,const Triangle& b){
     return std::tie(a.a.x,a.a.y,a.a.z,a.b.x,a.b.y,a.b.z,a.c.x,a.c.y,a.c.z)<
            std::tie(b.a.x,b.a.y,b.a.z,b.b.x,b.b.y,b.b.z,b.c.x,b.c.y,b.c.z);
   });
+  // Normals above come from each analytic face surface. Blend them only across
+  // shared vertices where adjacent face normals differ by less than about 18
+  // degrees: this removes seams between finely segmented smooth profiles while
+  // retaining actual creases such as the edges of a box.
+  using VertexKey=std::tuple<double,double,double>;
+  std::map<VertexKey,std::vector<Vec3>> analytic_normals;
+  for(const auto& t:out.triangles)for(auto corner:{std::pair<Vec3,Vec3>{t.a,t.na},{t.b,t.nb},{t.c,t.nc}})
+    analytic_normals[{corner.first.x,corner.first.y,corner.first.z}].push_back(corner.second);
+  constexpr double smooth_seam_cos=0.95;
+  for(auto& t:out.triangles)for(auto corner:{std::pair<Vec3*,Vec3*>{&t.a,&t.na},{&t.b,&t.nb},{&t.c,&t.nc}}){
+    Vec3 sum{};const auto& candidates=analytic_normals[{corner.first->x,corner.first->y,corner.first->z}];
+    for(auto n:candidates)if(dot(*corner.second,n)>=smooth_seam_cos)sum=sum+n;
+    try{*corner.second=normalized(sum);}catch(const std::exception&){}
+  }
   // Canonical corner order changes which corner the cross product starts
   // from; for slivers (fillet seams) that can round to an exactly zero or
   // non-finite normal although the original order had positive area. Such
@@ -148,14 +193,6 @@ Mesh tessellate(const TopoDS_Shape& shape,double tolerance){
   out.triangles.erase(std::remove_if(out.triangles.begin(),out.triangles.end(),[](const Triangle& t){
     double n=length(cross(t.b-t.a,t.c-t.a));return !(n>0)||!std::isfinite(n);}),out.triangles.end());
   if(out.triangles.empty())throw std::runtime_error("shape tessellated to no triangles");
-  using Key=std::tuple<long long,long long,long long>;auto key=[](Vec3 p){constexpr double q=1e7;return Key{std::llround(p.x*q),std::llround(p.y*q),std::llround(p.z*q)};};
-  std::map<Key,std::vector<Vec3>> adjacent;std::vector<Vec3> face_normals;face_normals.reserve(out.triangles.size());
-  for(const auto& t:out.triangles){Vec3 n=normalized(cross(t.b-t.a,t.c-t.a));face_normals.push_back(n);for(Vec3 p:{t.a,t.b,t.c})adjacent[key(p)].push_back(n);}
-  // Equal geometric triangles can retain different traversal order from OCCT.
-  // Sort incident normals before floating-point accumulation so their sum is
-  // independent of face enumeration and the mesh stays byte deterministic.
-  for(auto& entry:adjacent)std::sort(entry.second.begin(),entry.second.end(),[](Vec3 a,Vec3 b){return std::tie(a.x,a.y,a.z)<std::tie(b.x,b.y,b.z);});
-  for(size_t j=0;j<out.triangles.size();++j){auto& t=out.triangles[j];auto smooth=[&](Vec3 p){Vec3 sum{};for(auto n:adjacent[key(p)])if(dot(n,face_normals[j])>=0.5)sum=sum+n;return normalized(sum);};t.na=smooth(t.a);t.nb=smooth(t.b);t.nc=smooth(t.c);t.smooth=true;}
   return out;
 }
 }

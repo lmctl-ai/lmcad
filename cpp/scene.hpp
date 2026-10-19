@@ -19,7 +19,7 @@ Vec3 normalized(Vec3 a);
 struct Color { double r=.72, g=.74, b=.78; };
 struct Triangle { Vec3 a,b,c; Vec3 na{},nb{},nc{}; bool smooth=false; };
 struct Mesh { std::vector<Triangle> triangles; };
-struct Material { Color color; double roughness=.7; };
+struct Material { Color color; double roughness=.7; double specular_strength=.2; double shininess=32; };
 struct Shape {
   Mesh mesh;
   Material material;
@@ -37,7 +37,7 @@ struct Camera {
   double fit_radius=0, fit_margin=1;
 };
 Camera fitted_camera(Vec3 center,double radius,double fov,double margin,double aspect=1);
-struct Light { Vec3 direction{-1,-1,-1}; double intensity=1; Vec3 fill_direction{1,1,1}; double fill_intensity=.35; double ambient=.24; };
+struct Light { Vec3 direction{-.55,-1,-.4}; double intensity=.9; Vec3 fill_direction{.8,-.2,.9}; double fill_intensity=.22; double ambient=.18; };
 struct Image {
   int width=0, height=0;
   std::vector<unsigned char> rgb;
