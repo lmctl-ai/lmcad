@@ -1,5 +1,6 @@
 """Check a three-keyframe animation against independently rendered endpoints."""
 import os
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -14,6 +15,11 @@ source = Path('examples/tween.lms').read_text().replace('../schema/lmcad.dsl.jso
 
 def run(name, text):
     path = work / (name + '.lms'); output = work / (name + '.dslb')
+    old_save = 'savedsl(p, "build/tween.dslb");'
+    if old_save in text:
+        text = text.replace(old_save, f'savedsl(p, {json.dumps(str(output))});')
+    elif 'savedsl(' not in text:
+        text += f'\nsavedsl(p, {json.dumps(str(output))});\n'
     path.write_text(text)
     subprocess.run([compiler, str(path), str(output)], check=True, stdout=subprocess.DEVNULL)
     subprocess.run([host, '--dsl', str(output)], check=True, stdout=subprocess.DEVNULL)

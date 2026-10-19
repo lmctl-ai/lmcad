@@ -1,0 +1,221 @@
+name: ci
+
+on:
+  workflow_dispatch:
+    inputs:
+      all_platforms:
+        description: Enable the deferred macOS and Windows jobs (adds substantial build cost)
+        type: boolean
+        required: false
+        default: false
+      only:
+        description: Platform selection for manual runs
+        type: choice
+        required: false
+        default: linux
+        options: [linux, macos, windows, all]
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths-ignore: ["durable-memory/**", "**.md"]
+  pull_request:
+    paths-ignore: ["durable-memory/**", "**.md"]
+
+# Build jobs execute npm install scripts and compile third-party source. They
+# only need read access; the tag-only release job owns the write token.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  linux-x64:
+    if: github.event_name != 'workflow_dispatch' || inputs.only == 'linux' || inputs.only == 'all'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: toolchain and compiler key
+        id: toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build
+          echo "gcc=$(g++ -dumpfullversion -dumpversion)" >> "$GITHUB_OUTPUT"
+          g++ --version | head -1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: install published lmscript compiler (DSL v5)
+        run: |
+          npm install --global @lmctl-ai/lmctl@0.2.347
+          scripts/select-compiler.sh | tee compiler.txt
+          grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
+      - name: restore static OCCT install prefix
+        id: occt-cache
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f # v4.2.1
+        with:
+          path: ${{ runner.temp }}/occt-prefix
+          key: occt-8.0.1-linux-x64-gcc-${{ steps.toolchain.outputs.gcc }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
+          save-always: true
+      - name: build and install OCCT 8.0.1 static (cold cache only)
+        if: steps.occt-cache.outputs.cache-hit != 'true'
+        env:
+          OCCT_SRC: ${{ runner.temp }}/occt-src
+          OCCT_BUILD: ${{ runner.temp }}/occt-build
+          OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+        run: scripts/build-occt.sh
+      - name: sync and verify vendored SDK
+        run: scripts/sync-sdk.sh --verify
+      - name: build and run tests
+        env:
+          LMCAD_OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+          LMCAD_FULL_STATIC: ON
+        run: ./test.sh
+      - name: assert fully static executable
+        run: |
+          file build/lmcad | tee binary-file.txt
+          ldd build/lmcad 2>&1 | tee binary-ldd.txt
+          grep -q 'not a dynamic executable' binary-ldd.txt
+      - name: stage release binary
+        env:
+          OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+        run: |
+          mkdir -p dist
+          cp build/lmcad dist/lmcad-linux-x64
+          scripts/stage-release-notices.sh dist "$OCCT_PREFIX"
+          stat -c '%n %s bytes' dist/lmcad-linux-x64
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lmcad-linux-x64
+          path: dist/
+          if-no-files-found: error
+
+  linux-arm64:
+    if: github.event_name != 'workflow_dispatch' || inputs.only == 'linux' || inputs.only == 'all'
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: toolchain and compiler key
+        id: toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build
+          echo "gcc=$(g++ -dumpfullversion -dumpversion)" >> "$GITHUB_OUTPUT"
+          g++ --version | head -1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: install published lmscript compiler (DSL v5)
+        run: |
+          npm install --global @lmctl-ai/lmctl@0.2.347
+          scripts/select-compiler.sh | tee compiler.txt
+          grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
+      - name: restore static OCCT install prefix
+        id: occt-cache
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f # v4.2.1
+        with:
+          path: ${{ runner.temp }}/occt-prefix
+          key: occt-8.0.1-linux-arm64-gcc-${{ steps.toolchain.outputs.gcc }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
+          save-always: true
+      - name: build and install OCCT 8.0.1 static (cold cache only)
+        if: steps.occt-cache.outputs.cache-hit != 'true'
+        env:
+          OCCT_SRC: ${{ runner.temp }}/occt-src
+          OCCT_BUILD: ${{ runner.temp }}/occt-build
+          OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+        run: scripts/build-occt.sh
+      - name: sync and verify vendored SDK
+        run: scripts/sync-sdk.sh --verify
+      - name: build and run tests
+        env:
+          LMCAD_OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+          LMCAD_FULL_STATIC: ON
+        run: ./test.sh
+      - name: assert fully static executable
+        run: |
+          file build/lmcad | tee binary-file.txt
+          ldd build/lmcad 2>&1 | tee binary-ldd.txt
+          grep -q 'not a dynamic executable' binary-ldd.txt
+      - name: stage release binary
+        env:
+          OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+        run: |
+          mkdir -p dist
+          cp build/lmcad dist/lmcad-linux-arm64
+          scripts/stage-release-notices.sh dist "$OCCT_PREFIX"
+          stat -c '%n %s bytes' dist/lmcad-linux-arm64
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lmcad-linux-arm64
+          path: dist/
+          if-no-files-found: error
+
+  # Deferred platform scaffolding. Default/manual Linux runs never schedule
+  # these jobs. macOS needs a static OCCT build using AppleClang and the same
+  # disabled Draw/Visualization/DataExchange/Tcl/Freetype/TBB options, but
+  # cannot use Linux's `-static`; CMake must stop adding `-static-libstdc++`
+  # for AppleClang and the release check must inspect `otool -L` instead.
+  macos:
+    if: github.event_name == 'workflow_dispatch' && inputs.all_platforms && (inputs.only == 'macos' || inputs.only == 'all')
+    runs-on: macos-15
+    steps:
+      - run: |
+          echo "Deferred: OCCT static archives are feasible; lmcad CMake link flags and system-library audit need an AppleClang port."
+          echo "Expected configure: BUILD_LIBRARY_TYPE=Static, LMCAD_FULL_STATIC=OFF, disable X11/OpenGL/Tcl/Freetype/TBB."
+          echo "No macOS binary is produced by this placeholder job."
+
+  # MinGW-w64 is the preferred first Windows route because this project uses
+  # GNU CMake/link flags; MSVC requires a separate port of --start-group and
+  # POSIX file APIs. OCCT must be built static with USE_TBB/TK/FreeType off;
+  # verify archive naming and path handling before enabling a real build.
+  windows:
+    if: github.event_name == 'workflow_dispatch' && inputs.all_platforms && (inputs.only == 'windows' || inputs.only == 'all')
+    runs-on: windows-2022
+    steps:
+      - run: |
+          echo "Deferred: install MinGW-w64 + Ninja, build OCCT static with USE_TBB/TK/FreeType off, and port lmcad POSIX file APIs."
+          echo "MSVC is not currently compatible with this project's GNU linker group flags."
+          echo "No Windows binary is produced by this placeholder job."
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux-x64, linux-arm64]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: lmcad-linux-*
+          path: dist
+          merge-multiple: true
+      - name: attach third-party notices and private npm layout
+        run: |
+          cp THIRD_PARTY_NOTICES.md dist/THIRD_PARTY_NOTICES
+          mkdir -p relinking/.github relinking/scripts relinking/durable-memory
+          cp .github/occt-cmake-flags.txt relinking/.github/
+          cp scripts/build-occt.sh relinking/scripts/
+          cp durable-memory/13-licensing.md relinking/durable-memory/
+          tar -czf dist/lmcad-occt-relinking-recipe.tar.gz -C relinking .
+          scripts/npm-layout.sh dist npm-packages "${GITHUB_REF_NAME#v}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: npm-packages
+          path: npm-packages/
+          if-no-files-found: error
+      - name: attach binaries and notices to GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes dist/*

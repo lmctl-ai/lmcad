@@ -7,24 +7,11 @@
 OCCT 8.0.1 is a native build dependency. On this aarch64 Linux setup, the clean static geometry build takes about 16 minutes and peaks around 386 MiB RSS. The configured set disables Draw, Visualization, ApplicationFramework and DataExchange; there is no X11, OpenGL, Tcl, FreeType or TBB dependency. The prefix is reused by lmcad and fresh clones.
 
 ```sh
-git clone --depth 1 --branch V8_0_1 https://github.com/Open-Cascade-SAS/OCCT.git /home/ubuntu/poc/occt-spike/occt-src
-nice -n 10 cmake -S /home/ubuntu/poc/occt-spike/occt-src \
-  -B /home/ubuntu/poc/occt-spike/build-geom -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DBUILD_LIBRARY_TYPE=Static \
-  -DBUILD_MODULE_ApplicationFramework=OFF -DBUILD_MODULE_DataExchange=OFF \
-  -DBUILD_MODULE_Draw=OFF -DBUILD_MODULE_FoundationClasses=OFF \
-  -DBUILD_MODULE_ModelingAlgorithms=OFF -DBUILD_MODULE_ModelingData=OFF \
-  -DBUILD_MODULE_Visualization=OFF \
-  '-DBUILD_ADDITIONAL_TOOLKITS=TKPrim;TKBO;TKFillet;TKOffset;TKMesh' \
-  -DBUILD_DOC_Overview=OFF -DBUILD_DOC_RefMan=OFF -DUSE_TK=OFF \
-  -DUSE_FREETYPE=OFF -DUSE_TBB=OFF -DUSE_XLIB=OFF -DUSE_OPENGL=OFF \
-  -DBUILD_USE_PCH=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=OFF \
-  -DCMAKE_INSTALL_PREFIX=/home/ubuntu/poc/occt-prefix
-/usr/bin/time -v nice -n 10 cmake --build /home/ubuntu/poc/occt-spike/build-geom --parallel 3
-nice -n 10 cmake --install /home/ubuntu/poc/occt-spike/build-geom
+OCCT_SRC="$PWD/build/occt-src" OCCT_BUILD="$PWD/build/occt-build" \
+  OCCT_PREFIX="$PWD/build/occt-prefix" scripts/build-occt.sh
 ```
 
-`TKOffset` is the one extra toolkit beyond the spike's 14-library closure; shelling needs it. The executable links the resulting 15 static OCCT archives, without OCCT's STL/STEP exchange modules. CI can cache the OCCT build tree by tag, OS, architecture, and toolchain.
+`TKOffset` is the one extra toolkit beyond the spike's 14-library closure; shelling needs it. The executable links the resulting 15 static OCCT archives, without OCCT's STL/STEP exchange modules. CI caches the installed prefix by OCCT version, the SHA-256 of `.github/occt-cmake-flags.txt`, runner architecture, and exact GCC version. The prefix is cached instead of the build tree; a cold build takes about 16 minutes with at most three jobs, while a warm cache skips OCCT compilation.
 
 ## Build
 
@@ -42,7 +29,7 @@ stat -c '%s bytes' build/lmcad
 
 The final AArch64 binary in this configuration is 26,762,776 bytes (25.5 MiB). Set `LMCAD_OCCT_PREFIX` when using a different install location.
 
-`test.sh` prefers `lmscript` on PATH when it accepts schema v2 and compiles a while-loop probe to v5 bytecode. Otherwise it uses `scripts/lmscript-mono.sh`, a small adapter that imports the real `~/lmctl-mono/lmscript/dsl.ts` compiler directly; no compiler copy or environment variable is needed. The adapter compiles standalone `_dsl_` blocks only. Set `LMSCRIPT_BIN` to explicitly select a compiler.
+`test.sh` prefers `lmscript` on PATH when it accepts schema v2 and compiles a while-loop probe to v5 bytecode. CI installs the published npm `@lmctl-ai/lmctl@0.2.347` compiler and uses this probe; otherwise it uses `scripts/lmscript-mono.sh`, a small adapter that imports the real `~/lmctl-mono/lmscript/dsl.ts` compiler directly. The adapter compiles standalone `_dsl_` blocks only. Set `LMSCRIPT_BIN` to explicitly select a compiler.
 
 ## CLI
 
@@ -97,5 +84,7 @@ LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh
 ```
 
 The test script checks SDK pinning, v5 example compilation, JSON schema byte identity, complete summary/signature consistency, sequential multi-file execution, PNG contents and determinism, bounded supersampling, STL topology/volume, CAD exports and assertions, APNG chunk order/CRCs/sequences/delays/frame counts, extracted-frame identity, changed frames, and host-side validation refusals. The SDK loader rejects every bytecode version except v5. See [`durable-memory/03-build-run-test.md`](durable-memory/03-build-run-test.md), [`durable-memory/04-gotchas.md`](durable-memory/04-gotchas.md), and [`durable-memory/05-open-items.md`](durable-memory/05-open-items.md).
+
+Linux CI builds static OCCT once per runner architecture/toolchain cache key, then builds the fully static host and runs `test.sh`. On `v*` tags it attaches `lmcad-linux-x64`, `lmcad-linux-arm64`, the license/notice files, and an OCCT relinking-recipe archive. `.github/workflows/ci.yml` includes manual-only macOS and Windows placeholders; macOS needs platform-specific non-`-static` link settings, while Windows needs a MinGW-w64 route and a POSIX API port. See [`durable-memory/13-licensing.md`](durable-memory/13-licensing.md) before redistributing binaries.
 
 Supersampling uses an n×n box filter over all subpixels, decoding sRGB bytes to linear light for averaging and encoding the result back to sRGB. Output dimensions stay unchanged, including odd sizes. Both raster dimensions after multiplication by n must be at most 8192, with at most 16,777,216 high-resolution pixels; this bounds the RGB/depth buffers before allocation. The Lambert shader remains a simple display-colour model, not a physically based renderer.
