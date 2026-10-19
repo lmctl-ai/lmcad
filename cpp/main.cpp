@@ -1,5 +1,6 @@
 #include "dslvm.hpp"
 #include "render.hpp"
+#include "keyframes.hpp"
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -11,7 +12,7 @@
 namespace {
 using dslvm::Args; using dslvm::Value;
 struct Host {
-  struct Keyframe { double t,x,y,z,r,g,b; };
+  using Keyframe=lmcad::Keyframe;
   std::vector<std::unique_ptr<std::vector<Keyframe>>> keyframes;
   std::vector<std::unique_ptr<Keyframe>> keyframe_items;
   std::vector<std::unique_ptr<lmcad::Material>> materials;
@@ -77,9 +78,7 @@ void register_host(dslvm::Registry& r,Host& h){
   checked_method(r,"Material","roughness",{"float"},"Material",[](void* p,Args& a){color_range(a[0].f,"roughness");self<lmcad::Material>(p)->roughness=a[0].f;return Value::object("Material",p);});
   checked_method(r,"Light","intensity",{"float"},"Light",[](void* p,Args& a){finite(a[0].f,"light intensity");if(a[0].f<0)throw dslvm::Error("light intensity must not be negative");self<lmcad::Light>(p)->intensity=a[0].f;return Value::object("Light",p);});
   checked_function(r,"read_keyframes_csv",{"string"},"Keyframes",[&h](Args& a){
-    std::ifstream in(a[0].s);if(!in)throw dslvm::Error("cannot open keyframe CSV: "+a[0].s);std::string line;if(!std::getline(in,line)||line!="t,x,y,z,r,g,b")throw dslvm::Error("keyframe CSV header must be t,x,y,z,r,g,b");
-    auto rows=std::make_unique<std::vector<Host::Keyframe>>();while(std::getline(in,line)){if(line.empty())continue;std::stringstream ss(line);std::string cell;double v[7];for(double& x:v){if(!std::getline(ss,cell,','))throw dslvm::Error("keyframe CSV row must contain seven columns");try{x=std::stod(cell);}catch(...){throw dslvm::Error("invalid number in keyframe CSV");}finite(x,"keyframe value");}if(std::getline(ss,cell,','))throw dslvm::Error("keyframe CSV row has extra columns");if(!rows->empty()&&v[0]<=rows->back().t)throw dslvm::Error("keyframe times must be strictly increasing");if(v[4]<0||v[4]>1||v[5]<0||v[5]>1||v[6]<0||v[6]>1)throw dslvm::Error("keyframe colors must be between 0 and 1");rows->push_back({v[0],v[1],v[2],v[3],v[4],v[5],v[6]});if(rows->size()>4096)throw dslvm::Error("too many keyframes");}
-    if(rows->size()<2)throw dslvm::Error("keyframe CSV needs at least two rows");
+    auto rows=std::make_unique<std::vector<Host::Keyframe>>(lmcad::read_keyframes_csv(a[0].s));
     h.keyframes.push_back(std::move(rows));return Value::object("Keyframes",h.keyframes.back().get());
   });
   checked_method(r,"Keyframes","len",{},"int",[](void* p,Args&){return Value::integer(static_cast<int64_t>(self<std::vector<Host::Keyframe>>(p)->size()));});

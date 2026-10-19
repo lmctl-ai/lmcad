@@ -1,4 +1,5 @@
 #include "render.hpp"
+#include "keyframes.hpp"
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -70,6 +71,14 @@ int main(int argc,char** argv){try{
  huge.scale={1e308,1e308,1e308};huge.translation={1e308,0,0};rejected=false;
  try{lmcad::transform_point(huge,{1,0,0});}catch(const std::exception&){rejected=true;}
  check(rejected,"transform overflow was accepted");
+ const std::string header="t,x,y,z,r,g,b\n", row="0,0,0,0,1,0,0\n", last="1,1,0,0,0,0,1\n";
+ auto csv=[&](const std::string& text){std::ofstream file(dir+"/keys.csv",std::ios::binary);file<<text;file.close();return lmcad::read_keyframes_csv(dir+"/keys.csv");};
+ check(csv("\"t\",x,y,z,r,g,b\r\n\"0\",0,0,0,1,0,0\r\n1,1,0,0,0,0,1\r\n").size()==2,"quoted CRLF CSV rejected");
+ for(const auto& text:std::vector<std::string>{"",header,header+row,header+"0,0,0,0,1,0\n"+last,header+"0,0,0,0,1,0,0,\n"+last,header+"0junk,0,0,0,1,0,0\n"+last,header+"nan,0,0,0,1,0,0\n"+last,header+"inf,0,0,0,1,0,0\n"+last,header+"\"0,0,0,0,1,0,0\n",header+std::string(4097,'0'),header+row+row}){
+   bool failed=false;try{csv(text);}catch(const dslvm::Error&){failed=true;}check(failed,"invalid CSV accepted");
+ }
+ std::string many=header;for(int i=0;i<4097;i++)many+=std::to_string(i)+",0,0,0,1,0,0\n";
+ bool tooMany=false;try{csv(many);}catch(const dslvm::Error&){tooMany=true;}check(tooMany,"CSV row limit ignored");
  lmcad::Shape box;box.mesh=lmcad::make_box(1.4,1.0,.8);box.material.color={.8,.2,.1};box.translation={.1,0,0};
  lmcad::Camera camera;camera.eye={3,2,5};camera.target={0,0,0};lmcad::Light light;light.direction={-1,-1,-1};
  auto a=lmcad::render({box},camera,light,{.1,.2,.3},64,48),b=lmcad::render({box},camera,light,{.1,.2,.3},64,48);
