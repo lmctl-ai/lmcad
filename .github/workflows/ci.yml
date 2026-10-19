@@ -61,18 +61,24 @@ jobs:
           grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
       - name: restore static OCCT install prefix
         id: occt-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: ${{ runner.temp }}/occt-prefix
           key: occt-8.0.1-linux-x64-gcc-${{ steps.toolchain.outputs.gcc }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
-          save-always: true
       - name: build and install OCCT 8.0.1 static (cold cache only)
+        id: build-occt
         if: steps.occt-cache.outputs.cache-hit != 'true'
         env:
           OCCT_SRC: ${{ runner.temp }}/occt-src
           OCCT_BUILD: ${{ runner.temp }}/occt-build
           OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
         run: scripts/build-occt.sh
+      - name: save completed OCCT prefix even if later checks fail
+        if: always() && steps.occt-cache.outputs.cache-hit != 'true' && steps.build-occt.outcome == 'success'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/occt-prefix
+          key: occt-8.0.1-linux-x64-gcc-${{ steps.toolchain.outputs.gcc }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
       - name: sync and verify vendored SDK
         run: scripts/sync-sdk.sh --verify
       - name: build and run tests
@@ -83,7 +89,8 @@ jobs:
       - name: assert fully static executable
         run: |
           file build/lmcad | tee binary-file.txt
-          ldd build/lmcad 2>&1 | tee binary-ldd.txt
+          ldd build/lmcad > binary-ldd.txt 2>&1 || true
+          cat binary-ldd.txt
           grep -q 'not a dynamic executable' binary-ldd.txt
       - name: stage release binary
         env:
@@ -123,18 +130,24 @@ jobs:
           grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
       - name: restore static OCCT install prefix
         id: occt-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: ${{ runner.temp }}/occt-prefix
           key: occt-8.0.1-linux-arm64-gcc-${{ steps.toolchain.outputs.gcc }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
-          save-always: true
       - name: build and install OCCT 8.0.1 static (cold cache only)
+        id: build-occt
         if: steps.occt-cache.outputs.cache-hit != 'true'
         env:
           OCCT_SRC: ${{ runner.temp }}/occt-src
           OCCT_BUILD: ${{ runner.temp }}/occt-build
           OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
         run: scripts/build-occt.sh
+      - name: save completed OCCT prefix even if later checks fail
+        if: always() && steps.occt-cache.outputs.cache-hit != 'true' && steps.build-occt.outcome == 'success'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/occt-prefix
+          key: occt-8.0.1-linux-arm64-gcc-${{ steps.toolchain.outputs.gcc }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
       - name: sync and verify vendored SDK
         run: scripts/sync-sdk.sh --verify
       - name: build and run tests
@@ -145,7 +158,8 @@ jobs:
       - name: assert fully static executable
         run: |
           file build/lmcad | tee binary-file.txt
-          ldd build/lmcad 2>&1 | tee binary-ldd.txt
+          ldd build/lmcad > binary-ldd.txt 2>&1 || true
+          cat binary-ldd.txt
           grep -q 'not a dynamic executable' binary-ldd.txt
       - name: stage release binary
         env:
