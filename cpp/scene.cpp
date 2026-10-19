@@ -1,9 +1,24 @@
 #include "scene.hpp"
 #include <cmath>
+#include <algorithm>
 #include <utility>
 #include <stdexcept>
 
 namespace lmcad {
+Camera fitted_camera(Vec3 center,double radius,double fov,double margin,double aspect){
+  if(!std::isfinite(fov)||fov<=1||fov>=179||!std::isfinite(margin)||margin<1||
+     !std::isfinite(radius)||radius<=0||!std::isfinite(aspect)||aspect<=0)
+    throw std::runtime_error("invalid camera fit parameters");
+  const double vertical=fov*std::acos(-1.0)/360.0;
+  const double half=std::min(vertical,std::atan(std::tan(vertical)*aspect));
+  const double distance=std::max(1.0,radius/std::sin(half)*margin);
+  Camera c;c.fov_degrees=fov;c.target=center;c.eye=center+normalized({1.4,1.1,1.7})*distance;
+  c.near_clip=std::min(.01,(distance-radius)*.5);c.far_clip=distance+radius*4;
+  if(!std::isfinite(c.eye.x)||!std::isfinite(c.eye.y)||!std::isfinite(c.eye.z)||
+     !std::isfinite(c.far_clip)||!(c.near_clip>0))
+    throw std::runtime_error("camera fit exceeds finite coordinate range");
+  c.fit_radius=radius;c.fit_margin=margin;return c;
+}
 double dot(Vec3 a, Vec3 b) { return a.x*b.x+a.y*b.y+a.z*b.z; }
 Vec3 cross(Vec3 a, Vec3 b) { return {a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x}; }
 double length(Vec3 a) { return std::hypot(a.x,a.y,a.z); }

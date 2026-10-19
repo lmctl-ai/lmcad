@@ -28,3 +28,20 @@ for method in ['fill_light','directional_light']:
 for ambient in ['-0.1','1.1','sqrt(-1.0)']:
  run('invalid-ambient',f'scene.ambient({ambient});','ambient level')
 print('independent light handles and finite bounded lighting settings pass')
+
+run('empty-fit','scene.fit_camera(45.0,1.0);','at least one visible')
+for fov,margin in [('0.0','1.0'),('180.0','1.0'),('45.0','0.5'),('sqrt(-1.0)','1.0')]:
+ run('invalid-fit',f'scene.box(1.0,1.0,1.0,material());scene.fit_camera({fov},{margin});','camera')
+# A fitted camera must adapt to a portrait render, keeping a margin at every edge.
+import struct,zlib
+portrait=work/'portrait.png'
+run('portrait-fit',f'scene.background(0.0,0.0,0.0);scene.box(2.0,2.0,2.0,material());scene.fit_camera(45.0,1.1);scene.render_png({json.dumps(str(portrait))},31,127);')
+b=portrait.read_bytes();pos=8;idat=b''
+while pos<len(b):
+ n=struct.unpack_from('>I',b,pos)[0]
+ if b[pos+4:pos+8]==b'IDAT':idat+=b[pos+8:pos+8+n]
+ pos+=12+n
+raw=zlib.decompress(idat);rows=[raw[y*94+1:(y+1)*94] for y in range(127)]
+assert any(any(row) for row in rows),'fit rendered nothing'
+assert not any(rows[0]+rows[-1]) and all(not any(row[:3]+row[-3:]) for row in rows),'portrait fit clips geometry'
+print('camera fit handles portrait aspect, margin, and invalid inputs')

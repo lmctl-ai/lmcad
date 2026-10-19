@@ -76,8 +76,9 @@ Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& 
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16777216)throw std::runtime_error("image dimensions exceed limits");
   const uint64_t sw=uint64_t(w)*samples, sh=uint64_t(h)*samples;
   if(sw>8192||sh>8192||sw*sh>16777216)throw std::runtime_error("supersampled image exceeds raster limits");
-  if(samples==1)return render_native(shapes,camera,light,bg,w,h);
-  Image hi=render_native(shapes,camera,light,bg,static_cast<int>(sw),static_cast<int>(sh));
+  const Camera view=camera.fit_radius>0 ? fitted_camera(camera.target,camera.fit_radius,camera.fov_degrees,camera.fit_margin,double(w)/h) : camera;
+  if(samples==1)return render_native(shapes,view,light,bg,w,h);
+  Image hi=render_native(shapes,view,light,bg,static_cast<int>(sw),static_cast<int>(sh));
   Image out;out.width=w;out.height=h;out.rgb.resize(static_cast<size_t>(w)*h*3);
   const unsigned divisor=samples*samples;
   for(int y=0;y<h;y++)for(int x=0;x<w;x++)for(int c=0;c<3;c++){

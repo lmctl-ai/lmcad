@@ -34,7 +34,9 @@ struct Camera {
   Vec3 eye{3,3,5};
   Vec3 target{0,0,0};
   double near_clip=.01, far_clip=10000;
+  double fit_radius=0, fit_margin=1;
 };
+Camera fitted_camera(Vec3 center,double radius,double fov,double margin,double aspect=1);
 struct Light { Vec3 direction{-1,-1,-1}; double intensity=1; Vec3 fill_direction{1,1,1}; double fill_intensity=.35; double ambient=.24; };
 struct Image {
   int width=0, height=0;

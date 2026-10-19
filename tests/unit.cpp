@@ -2,6 +2,7 @@
 #include "cad.hpp"
 #include "keyframes.hpp"
 #include <cstdint>
+#include <cmath>
 #include <limits>
 #include <fstream>
 #include <iostream>
@@ -40,6 +41,16 @@ int main(int argc,char** argv){try{
    bool refused=false;try{lmcad::cad::tessellate(lmcad::cad::box(1,1,1),deflection);}catch(const std::exception&){refused=true;}
    check(refused,"unbounded tessellation deflection accepted");
  }
+ for(double aspect:{0.1,1.0,3.0})for(double fov:{2.0,45.0,178.0}){
+   auto fit=lmcad::fitted_camera({0,0,0},std::sqrt(3.0),fov,1.1,aspect);
+   auto forward=lmcad::normalized(fit.target-fit.eye),right=lmcad::normalized(lmcad::cross(forward,{0,1,0})),up=lmcad::cross(right,forward);
+   for(double x:{-1.0,1.0})for(double y:{-1.0,1.0})for(double z:{-1.0,1.0}){
+     auto delta=lmcad::Vec3{x,y,z}-fit.eye;double depth=lmcad::dot(delta,forward),half=depth*std::tan(fov*std::acos(-1.0)/360);
+     check(depth>fit.near_clip&&depth<fit.far_clip&&std::abs(lmcad::dot(delta,right))<half*aspect&&std::abs(lmcad::dot(delta,up))<half,"fitted camera clips bounds");
+   }
+ }
+ bool fit_overflow=false;try{lmcad::fitted_camera({},100,45,std::numeric_limits<double>::max());}catch(const std::exception&){fit_overflow=true;}
+ check(fit_overflow,"camera fit overflow accepted");
  lmcad::Camera clipcam;clipcam.eye={0,0,0};clipcam.target={0,0,-1};clipcam.near_clip=1;clipcam.far_clip=4;
  lmcad::Shape crossing;crossing.mesh.triangles={{{-1,-1,-2},{1,-1,-2},{0,1,-.5}}};
  auto visible=[&](const lmcad::Shape& shape){auto im=lmcad::render({shape},clipcam,lmcad::Light{}, {0,0,0},32,32);size_t n=0;for(auto c:im.rgb)n+=c!=0;return n;};
