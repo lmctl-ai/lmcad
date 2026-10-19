@@ -10,16 +10,8 @@ pass=0
 ok(){ pass=$((pass+1)); echo "ok $pass - $1"; }
 fail(){ echo "FAIL: $*" >&2; exit 1; }
 
-if [ -n "${LMSCRIPT_BIN:-}" ]; then
-  LMSCRIPT="$LMSCRIPT_BIN"
-  COMPILER_SOURCE="explicit LMSCRIPT_BIN"
-elif command -v lmscript >/dev/null 2>&1 && lmscript --dsl-signatures schema/lmcad.dsl.json >"$WORK/path-signatures" 2>/dev/null; then
-  LMSCRIPT="$(command -v lmscript)"
-  COMPILER_SOURCE="PATH lmscript"
-else
-  LMSCRIPT="$HERE/scripts/lmscript-mono.sh"
-  COMPILER_SOURCE="mono dsl.ts adapter"
-fi
+LMSCRIPT="$(scripts/select-compiler.sh)"
+COMPILER_SOURCE="$LMSCRIPT"
 scripts/sync-sdk.sh --verify >/dev/null || fail "SDK header pin mismatch"
 ok "SDK header matches sdk.lock"
 cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -101,6 +93,8 @@ LMSCRIPT_BIN="$LMSCRIPT" LMCAD_HOST="$HOST" python3 tests/refusals.py "$WORK"
 ok "compiled host validation refusals"
 LMSCRIPT_BIN="$LMSCRIPT" LMCAD_HOST="$HOST" python3 tests/tween.py "$WORK"
 ok "multi-segment tween boundaries and endpoints"
+python3 tests/compiler-selection.py "$WORK"
+ok "compiler selection verifies v5 output capability"
 python3 tests/adapter.py "$WORK"
 ok "relocated compiler adapter parsing"
 echo "PASS: $pass checks"

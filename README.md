@@ -12,7 +12,7 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j4
 ```
 
-`test.sh` prefers `lmscript` on PATH when its `--dsl-signatures` command accepts schema v2. Otherwise it uses `scripts/lmscript-mono.sh`, a small adapter that imports the real `~/lmctl-mono/lmscript/dsl.ts` compiler directly; no compiler copy or environment variable is needed. The adapter compiles standalone `_dsl_` blocks only. Set `LMSCRIPT_BIN` to explicitly select a compiler.
+`test.sh` prefers `lmscript` on PATH when it accepts schema v2 and compiles a while-loop probe to v5 bytecode. Otherwise it uses `scripts/lmscript-mono.sh`, a small adapter that imports the real `~/lmctl-mono/lmscript/dsl.ts` compiler directly; no compiler copy or environment variable is needed. The adapter compiles standalone `_dsl_` blocks only. Set `LMSCRIPT_BIN` to explicitly select a compiler.
 
 ## CLI
 

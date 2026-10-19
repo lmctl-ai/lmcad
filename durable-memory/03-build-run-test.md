@@ -3,7 +3,7 @@
 ## Toolchain and SDK
 
 - Checked on Linux ARM64, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1.
-- The current language/compiler/bytecode version is v5 and the schema format is v2. The examples compile with `/home/ubuntu/lmctl-mono/lmscript/dsl.ts` through `scripts/lmscript-mono.sh`; this adapter imports the real compiler and does not edit or copy it. `test.sh` prefers a PATH `lmscript` that accepts `--dsl-signatures` for schema v2; otherwise it falls back to the adapter. `LMSCRIPT_BIN` is an optional explicit override.
+- The current language/compiler/bytecode version is v5 and the schema format is v2. The examples compile with `/home/ubuntu/lmctl-mono/lmscript/dsl.ts` through `scripts/lmscript-mono.sh`; this adapter imports the real compiler and does not edit or copy it. `test.sh` prefers a PATH `lmscript` that accepts schema v2 and compiles a while-loop probe to v5 bytecode; otherwise it falls back to the adapter. `LMSCRIPT_BIN` is an optional explicit override.
 - At this resync, PATH `lmscript` was 0.2.333 and rejected `--dsl-signatures`; all four examples therefore used the mono `dsl.ts` adapter and emitted v5 bytecode.
 - `sdk.lock` pins cpp-dsl-sdk `b8fd2858a6313ba256b25b6dd250ee2404bc6ef3` and the SHA-256 of the vendored `cpp/dslvm.hpp`. `scripts/sync-sdk.sh` resolves `origin/main` by default; `--verify` checks the copied header.
 - CMake embeds the exact schema file bytes in a generated header. `lmcad --schema` prints those bytes; no external schema file is needed at runtime. `lmcad --dsl-signatures` prints the registry's canonical declarations, checked byte-for-byte against the compiler's schema output.
