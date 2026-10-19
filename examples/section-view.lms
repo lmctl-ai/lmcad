@@ -1,0 +1,27 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/section-view.dslb";
+p = _dsl_ schema="../schema/lmcad.dsl.json";
+scene.background(0.06, 0.08, 0.12);
+let neutral = material().color(0.62, 0.68, 0.75);
+let left_material = material().color(0.92, 0.34, 0.14);
+let right_material = material().color(0.18, 0.62, 0.82);
+let original = scene.box(12.0, 6.0, 8.0, neutral);
+let total = original.volume();
+let left = scene.box(12.0, 6.0, 8.0, left_material);
+let left_clip = scene.box(6.0, 8.0, 8.0, neutral).position(-3.0, 0.0, 0.0);
+left.intersect(left_clip).translate(-0.35, 0.0, 0.0);
+let right = scene.box(12.0, 6.0, 8.0, right_material);
+let right_clip = scene.box(6.0, 8.0, 8.0, neutral).position(3.0, 0.0, 0.0);
+right.intersect(right_clip).translate(0.35, 0.0, 0.0);
+original.visible(false);
+left_clip.visible(false);
+right_clip.visible(false);
+scene.assert_close(left.volume() + right.volume(), total, 0.000001);
+scene.fit_camera(40.0, 1.25);
+scene.directional_light(-0.6, -1.0, -0.5, 0.72);
+scene.fill_light(0.8, -0.2, 0.9, 0.42);
+scene.ambient(0.22);
+scene.render_png("build/section-view.png", 720, 540);
+scene.export_stl("build/section-view.stl");
+end _dsl_
+savedsl(p, out);
+println(f"wrote {out}");

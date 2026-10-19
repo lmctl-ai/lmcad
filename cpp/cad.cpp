@@ -144,6 +144,10 @@ Mesh tessellate(const TopoDS_Shape& shape,double tolerance){
   using Key=std::tuple<long long,long long,long long>;auto key=[](Vec3 p){constexpr double q=1e7;return Key{std::llround(p.x*q),std::llround(p.y*q),std::llround(p.z*q)};};
   std::map<Key,std::vector<Vec3>> adjacent;std::vector<Vec3> face_normals;face_normals.reserve(out.triangles.size());
   for(const auto& t:out.triangles){Vec3 n=normalized(cross(t.b-t.a,t.c-t.a));face_normals.push_back(n);for(Vec3 p:{t.a,t.b,t.c})adjacent[key(p)].push_back(n);}
+  // Equal geometric triangles can retain different traversal order from OCCT.
+  // Sort incident normals before floating-point accumulation so their sum is
+  // independent of face enumeration and the mesh stays byte deterministic.
+  for(auto& entry:adjacent)std::sort(entry.second.begin(),entry.second.end(),[](Vec3 a,Vec3 b){return std::tie(a.x,a.y,a.z)<std::tie(b.x,b.y,b.z);});
   for(size_t j=0;j<out.triangles.size();++j){auto& t=out.triangles[j];auto smooth=[&](Vec3 p){Vec3 sum{};for(auto n:adjacent[key(p)])if(dot(n,face_normals[j])>=0.5)sum=sum+n;return normalized(sum);};t.na=smooth(t.a);t.nb=smooth(t.b);t.nc=smooth(t.c);t.smooth=true;}
   return out;
 }

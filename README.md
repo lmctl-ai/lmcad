@@ -58,7 +58,7 @@ build/lmcad --dsl build/still-life.dslb
 
 `--schema` prints a compact registry-derived summary with context first, then free functions and members grouped by type. `--schema --json` prints the embedded schema bytes exactly. `--dsl-signatures` prints the host registry's canonical signature list, which must match the compiler's output for the schema. `--dsl FILE [FILE ...]` executes bytecode files in argument order, using one embedded schema and the same host context for every block. Each file has fresh VM locals, while shapes, materials, camera and other host state persist across files. Execution stops on the first load or runtime error (exit 3); previous outputs and any output already written by the failing block remain. Each completed block prints one success JSON line, followed by an error JSON line if a later block fails. All command-line arguments are validated before execution (invalid syntax exits 2). The old `--schema FILE` input form is removed.
 
-The examples cover a lit still life, STL export, a range-loop row, CSV-driven tweening, a plate with a loop of through-holes, a hollow brick with loop-generated studs, a revolved hollow vase, and a 5x5 scalar-colored glyph field. `fit_camera(fov, margin)` snapshots visible bounds and adapts the fitted distance to each render’s aspect ratio; FOV is vertical and margin must be at least 1. Explicit camera `look_at` or `clipping` calls disable automatic fitting. Ambient must be finite and nonnegative; values above 1 clamp to full ambient illumination. scene settings provide key and fill lights, ambient level, and bounded 1..4 supersampling (default 2). OCCT tessellation computes smooth normals across curved faces while keeping sharp edges. Boolean operations and solid-volume assertions use the BRep geometry. To compile and run them individually:
+The examples cover a lit still life, STL export, a range-loop row, CSV-driven tweening, a plate with through-holes, hollow brick with studs, hollow vase, scalar-colored glyph field, a separated two-piece section view, a handled mug, and a camera turntable. Tween and turntable produce APNG animations as well as numbered PNG frames (tween). Both animations are 160x120; tween has 30 frames at 30 FPS and turntable has 36 frames at 24 FPS. APNG uses deterministic stored DEFLATE and loops forever; `lmcad-apng-extract` extracts a zero-based full frame to PNG. Host limits are 240 frames, 64 million total frame pixels, and 16,777,216 pixels per frame. `fit_camera(fov, margin)` snapshots visible bounds and adapts the fitted distance to each render’s aspect ratio; FOV is vertical and margin must be at least 1. Explicit camera `look_at` or `clipping` calls disable automatic fitting. Ambient must be finite and nonnegative; values above 1 clamp to full ambient illumination. Scene settings provide key and fill lights, ambient level, and bounded 1..4 supersampling (default 2). OCCT tessellation computes smooth normals across curved faces while keeping sharp edges. Boolean operations and solid-volume assertions use the BRep geometry. To compile and run them individually:
 
 ```sh
 scripts/lmscript-mono.sh examples/still-life.lms build/still-life.dslb
@@ -77,6 +77,12 @@ build/lmcad --dsl build/brick.dslb
 build/lmcad --dsl build/vase.dslb
 scripts/lmscript-mono.sh examples/glyph-field.lms build/glyph-field.dslb
 build/lmcad --dsl build/glyph-field.dslb
+scripts/lmscript-mono.sh examples/section-view.lms build/section-view.dslb
+scripts/lmscript-mono.sh examples/mug.lms build/mug.dslb
+scripts/lmscript-mono.sh examples/turntable.lms build/turntable.dslb
+build/lmcad --dsl build/section-view.dslb
+build/lmcad --dsl build/mug.dslb
+build/lmcad --dsl build/turntable.dslb
 ```
 
 ## Checks
@@ -90,6 +96,6 @@ cmake -S . -B build-sanitize -G Ninja -DCMAKE_BUILD_TYPE=Release \
 LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh
 ```
 
-The test script checks SDK pinning, v5 example compilation, JSON schema byte identity, complete summary/signature consistency, sequential multi-file execution, PNG contents and determinism, bounded supersampling, 12-triangle box STL, tween output, CAD PNG/STL exports, CAD operation volume assertions, and host-side validation refusals. The SDK loader rejects every bytecode version except v5. See [`durable-memory/03-build-run-test.md`](durable-memory/03-build-run-test.md), [`durable-memory/04-gotchas.md`](durable-memory/04-gotchas.md), and [`durable-memory/05-open-items.md`](durable-memory/05-open-items.md).
+The test script checks SDK pinning, v5 example compilation, JSON schema byte identity, complete summary/signature consistency, sequential multi-file execution, PNG contents and determinism, bounded supersampling, STL topology/volume, CAD exports and assertions, APNG chunk order/CRCs/sequences/delays/frame counts, extracted-frame identity, changed frames, and host-side validation refusals. The SDK loader rejects every bytecode version except v5. See [`durable-memory/03-build-run-test.md`](durable-memory/03-build-run-test.md), [`durable-memory/04-gotchas.md`](durable-memory/04-gotchas.md), and [`durable-memory/05-open-items.md`](durable-memory/05-open-items.md).
 
 Supersampling uses an n×n box filter over all subpixels, decoding sRGB bytes to linear light for averaging and encoding the result back to sRGB. Output dimensions stay unchanged, including odd sizes. Both raster dimensions after multiplication by n must be at most 8192, with at most 16,777,216 high-resolution pixels; this bounds the RGB/depth buffers before allocation. The Lambert shader remains a simple display-colour model, not a physically based renderer.

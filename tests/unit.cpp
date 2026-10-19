@@ -16,10 +16,34 @@ uint32_t adler(const std::vector<unsigned char>& v){uint32_t a=1,b=0;for(auto x:
 uint32_t be32(const std::vector<unsigned char>& b,size_t i){return(uint32_t(b[i])<<24)|(uint32_t(b[i+1])<<16)|(uint32_t(b[i+2])<<8)|b[i+3];}
 std::vector<unsigned char> read(const std::string& p){std::ifstream f(p,std::ios::binary);if(!f)throw std::runtime_error("cannot read "+p);return {std::istreambuf_iterator<char>(f),{}};}
 void check(bool ok,const char* what){if(!ok)throw std::runtime_error(what);}
+struct ApngInfo { uint32_t frames=0, loops=0, width=0,height=0; uint16_t delay=0; std::vector<std::vector<unsigned char>> image_data; };
+ApngInfo inspect_apng(const std::string& path){
+ auto b=read(path);check(b.size()>8&&b[0]==137&&b[1]=='P'&&b[2]=='N'&&b[3]=='G',"bad APNG signature");
+ size_t p=8;uint32_t next=0;bool ihdr=false,actl=false,iend=false,seen_idat=false;ApngInfo out;std::vector<unsigned char> current;
+ while(p+12<=b.size()){
+  uint32_t n=be32(b,p);p+=4;check(uint64_t(p)+4+n+4<=b.size(),"truncated APNG chunk");size_t start=p;std::string type(reinterpret_cast<const char*>(b.data()+p),4);p+=4;const auto* d=b.data()+p;
+  check(crc(b.data()+start,4+n)==be32(b,p+n),"APNG chunk CRC mismatch");
+  if(type=="IHDR"){check(!ihdr&&n==13,"bad APNG IHDR");out.width=be32(b,p);out.height=be32(b,p+4);ihdr=true;}
+  else if(type=="sRGB")check(ihdr&&!actl&&n==1,"APNG sRGB ordering");
+  else if(type=="acTL"){check(ihdr&&!actl&&!seen_idat&&n==8,"bad APNG acTL");actl=true;out.frames=be32(b,p);out.loops=be32(b,p+4);}
+  else if(type=="fcTL"){
+   check(actl&&n==26&&be32(b,p)==next++,"bad APNG fcTL sequence");
+   if(!current.empty()){out.image_data.push_back(current);current.clear();}
+   check(be32(b,p+4)>0&&be32(b,p+8)>0&&be32(b,p+12)==0&&be32(b,p+16)==0,"bad APNG frame rectangle");
+   uint16_t delay=uint16_t(d[20])<<8|d[21];check(delay>0&&(uint16_t(d[22])<<8|d[23])==1000,"bad APNG frame delay");if(!out.delay)out.delay=delay;check(out.delay==delay,"inconsistent APNG frame delays");
+  }
+  else if(type=="IDAT"){check(actl&&out.image_data.empty()&&next==1,"APNG IDAT order");seen_idat=true;current.insert(current.end(),d,d+n);}
+  else if(type=="fdAT"){check(actl&&seen_idat&&n>4&&be32(b,p)==next++,"bad APNG fdAT sequence");current.insert(current.end(),d+4,d+n);}
+  else if(type=="IEND"){check(n==0,"bad APNG IEND");if(!current.empty())out.image_data.push_back(current);iend=true;p+=n+4;break;}
+  else check(type=="PLTE"||type=="tRNS","unexpected APNG chunk");
+  p+=n+4;
+ }
+ check(ihdr&&actl&&iend&&p==b.size()&&out.frames==out.image_data.size(),"APNG chunk order/frame count mismatch");return out;
+}
 }
 int main(int argc,char** argv){try{
- if(argc!=2)throw std::runtime_error("usage: lmcad-unit OUTPUT_DIR");
- std::string dir=argv[1];
+ if(argc!=3)throw std::runtime_error("usage: lmcad-unit OUTPUT_DIR BUILD_DIR");
+ std::string dir=argv[1],build=argv[2];
  for(auto named_mesh:std::vector<std::pair<std::string,lmcad::Mesh>>{{"box",lmcad::cad::tessellate(lmcad::cad::box(2,2,2))},{"sphere",lmcad::cad::tessellate(lmcad::cad::sphere(1))},{"cylinder",lmcad::cad::tessellate(lmcad::cad::cylinder(1,2))}}) {
    lmcad::Shape shape;shape.mesh=named_mesh.second;
    for(auto scale:{lmcad::Vec3{1,1,1},lmcad::Vec3{-1,1,1},lmcad::Vec3{-1,-1,1}}) {
@@ -146,5 +170,14 @@ int main(int argc,char** argv){try{
  std::vector<unsigned char> raw;size_t z=2;bool final=false;
  while(!final){check(z+5<=compressed.size()-4,"truncated stored deflate block");unsigned char hdr=compressed[z++];final=(hdr&1)!=0;check((hdr&6)==0,"PNG writer did not use stored deflate blocks");uint16_t len=uint16_t(compressed[z])|uint16_t(compressed[z+1])<<8;uint16_t inv=uint16_t(compressed[z+2])|uint16_t(compressed[z+3])<<8;z+=4;check(uint16_t(~len)==inv,"bad stored deflate length complement");check(z+len<=compressed.size()-4,"truncated stored deflate data");raw.insert(raw.end(),compressed.begin()+z,compressed.begin()+z+len);z+=len;}
  uint32_t expected=(uint32_t(compressed[compressed.size()-4])<<24)|(uint32_t(compressed[compressed.size()-3])<<16)|(uint32_t(compressed[compressed.size()-2])<<8)|compressed.back();check(adler(raw)==expected,"PNG Adler-32 mismatch");
- std::cout<<"unit checks passed: raster deterministic, PNG signature/IHDR/CRC-32/Adler-32 valid\n";return 0;
+ auto tween=inspect_apng(build+"/tween.apng"),turn=inspect_apng(build+"/turntable.apng");
+ check(tween.frames==30&&tween.loops==0&&tween.image_data.size()==30,"tween APNG frame/loop count");
+ check(turn.frames==36&&turn.loops==0&&turn.image_data.size()==36,"turntable APNG frame/loop count");
+ check(tween.width==160&&tween.height==120&&turn.width==160&&turn.height==120,"APNG dimensions");
+ check(tween.delay==33&&turn.delay==42,"APNG frame delay does not match requested FPS");
+ auto first_png=read(build+"/tween-0.png");pos=8;std::vector<unsigned char> first_idat;
+ while(pos+12<=first_png.size()){uint32_t n=be32(first_png,pos);std::string type(reinterpret_cast<const char*>(first_png.data()+pos+4),4);if(type=="IDAT")first_idat.insert(first_idat.end(),first_png.begin()+pos+8,first_png.begin()+pos+8+n);pos+=size_t(n)+12;if(type=="IEND")break;}
+ check(first_idat==tween.image_data[0],"APNG first frame differs from matching PNG render");
+ check(tween.image_data.front()!=tween.image_data.back()&&turn.image_data.front()!=turn.image_data.back(),"APNG frames are not changing");
+ std::cout<<"unit checks passed: raster deterministic, PNG CRC/Adler valid; APNG CRC/sequence/chunks valid (30+36 frames), first frame matches PNG\n";return 0;
  }catch(const std::exception& e){std::cerr<<"unit failure: "<<e.what()<<"\n";return 1;}}

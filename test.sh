@@ -21,11 +21,11 @@ cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMCAD_OCCT_PREF
 cmake --build "$BUILD_DIR" -j3
 ok "host and unit test build"
 
-for example in still-life box-stl loop-row tween plate-with-holes brick vase glyph-field; do
+for example in still-life box-stl loop-row tween plate-with-holes brick vase glyph-field section-view mug turntable; do
   "$LMSCRIPT" "examples/$example.lms" "build/$example.dslb" >"$WORK/$example.log" || fail "$example compile with $COMPILER_SOURCE"
   [ "$(od -An -t u1 -j 5 -N 1 "build/$example.dslb" | tr -d ' ')" = 5 ] || fail "$example was not compiled as bytecode v5"
 done
-ok "8 examples compile with $COMPILER_SOURCE as bytecode v5"
+ok "11 examples compile with $COMPILER_SOURCE as bytecode v5"
 
 "$HOST" --schema --json >"$WORK/embedded-schema.json" || fail "embedded schema JSON print"
 cmp schema/lmcad.dsl.json "$WORK/embedded-schema.json" || fail "embedded schema differs from source bytes"
@@ -45,7 +45,10 @@ rm -f build/tween-*.png
 "$HOST" --dsl build/brick.dslb || fail "brick run"
 "$HOST" --dsl build/vase.dslb || fail "vase run"
 "$HOST" --dsl build/glyph-field.dslb || fail "glyph field run"
-ok "still-life, STL, loop/tween, plate, brick, vase, and glyph field programs run"
+"$HOST" --dsl build/section-view.dslb || fail "section view run"
+"$HOST" --dsl build/mug.dslb || fail "mug run"
+"$HOST" --dsl build/turntable.dslb || fail "turntable run"
+ok "still-life, STL, loop/tween, CAD models, section, mug, and turntable programs run"
 "$HOST" --dsl build/loop-row.dslb build/loop-row.dslb >"$WORK/multi.jsonl" || fail "multi-bytecode invocation"
 [ "$(wc -l < "$WORK/multi.jsonl" | tr -d ' ')" = 2 ] || fail "multiple bytecode files did not run in order"
 ok "multiple bytecode files run sequentially against one embedded schema"
@@ -65,15 +68,27 @@ center=raw[(h//2)*stride+1+3*(w//2):(h//2)*stride+4+3*(w//2)]; assert center != 
 frames=sorted(bdir.glob('tween-*.png')); assert len(frames)==30,len(frames)
 hashes=[hashlib.sha256(p.read_bytes()).digest() for p in frames]; assert len(set(hashes))==30
 assert (bdir/'loop-row.png').stat().st_size>1000
-for name in ('plate-with-holes','brick','vase','glyph-field'):
+for name in ('plate-with-holes','brick','vase','glyph-field','section-view','mug'):
     image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
     ww,hh=struct.unpack_from('>II',image,16); assert (ww,hh)==(720,540)
-    facets=(bdir/f'{name}.stl').read_bytes(); count=struct.unpack_from('<I',facets,80)[0]; assert count>100 and len(facets)==84+count*50
+    facets=(bdir/f'{name}.stl').read_bytes(); count=struct.unpack_from('<I',facets,80)[0]; assert count>(10 if name=='section-view' else 100) and len(facets)==84+count*50
+for name in ('section-view','mug'):
+    image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
 print(f'PNG 640x480 + CAD PNG 720x540, PPM/OBJ valid, STL box facets={n}, CAD STL facets checked, tween frames={len(frames)}, unique={len(set(hashes))}')
 PY
 ok "PNG dimensions/pixels, STL facets, CAD exports, loop render, glyph field, and 30 distinct tween frames"
-"$UNIT" "$WORK" || fail "C++ unit checks"
-ok "PNG CRC/Adler and raster determinism checks"
+"$BUILD_DIR/lmcad-apng-extract" build/tween.apng 0 "$WORK/tween-apng-first.png" || fail "extract tween APNG frame 0"
+cmp build/tween-0.png "$WORK/tween-apng-first.png" || fail "APNG first frame differs from PNG render"
+"$BUILD_DIR/lmcad-apng-extract" build/tween.apng 15 "$WORK/tween-apng-middle.png" || fail "extract tween APNG middle frame"
+"$BUILD_DIR/lmcad-apng-extract" build/tween.apng 29 "$WORK/tween-apng-last.png" || fail "extract tween APNG last frame"
+cmp -s "$WORK/tween-apng-first.png" "$WORK/tween-apng-middle.png" && fail "tween APNG middle frame did not change"
+cmp -s "$WORK/tween-apng-middle.png" "$WORK/tween-apng-last.png" && fail "tween APNG last frame did not change"
+for frame in 0 18 35; do "$BUILD_DIR/lmcad-apng-extract" build/turntable.apng "$frame" "$WORK/turntable-$frame.png" || fail "extract turntable frame $frame"; done
+cmp -s "$WORK/turntable-0.png" "$WORK/turntable-18.png" && fail "turntable middle frame did not change"
+cmp -s "$WORK/turntable-18.png" "$WORK/turntable-35.png" && fail "turntable last frame did not change"
+ok "APNG extracted frames decode to PNG; tween and turntable frames differ"
+"$UNIT" "$WORK" "$BUILD_DIR" || fail "C++ unit checks"
+ok "PNG CRC/Adler, APNG chunk CRC/sequence/frame count, and raster determinism checks"
 
 python3 - "build" "$WORK/tween-before.sha256" <<'PY'
 import hashlib,pathlib,sys
@@ -85,7 +100,14 @@ import hashlib,pathlib,sys
 p=pathlib.Path(sys.argv[1]); files=sorted(p.glob('tween-*.png')); assert len(files)==30; hashes='\n'.join(hashlib.sha256(x.read_bytes()).hexdigest() for x in files); assert hashes==pathlib.Path(sys.argv[2]).read_text(); print('30 deterministic frame files present')
 PY
 ok "tween frame rerun completes deterministically"
-for example in plate-with-holes brick vase glyph-field; do
+cp build/tween.apng "$WORK/tween.before.apng"
+cp build/turntable.apng "$WORK/turntable.before.apng"
+"$HOST" --dsl build/tween.dslb >/dev/null || fail "tween APNG deterministic rerun"
+cmp build/tween.apng "$WORK/tween.before.apng" || fail "tween APNG changed between runs"
+"$HOST" --dsl build/turntable.dslb >/dev/null || fail "turntable APNG deterministic rerun"
+cmp build/turntable.apng "$WORK/turntable.before.apng" || fail "turntable APNG changed between runs"
+ok "tween and turntable APNG reruns are byte deterministic"
+for example in plate-with-holes brick vase glyph-field section-view mug; do
   cp "build/$example.png" "$WORK/$example.before.png"
   cp "build/$example.stl" "$WORK/$example.before.stl"
   "$HOST" --dsl "build/$example.dslb" >/dev/null || fail "$example deterministic rerun"

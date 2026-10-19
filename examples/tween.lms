@@ -7,6 +7,7 @@ scene.directional_light(-0.4, -1.0, -0.5, 0.72);
 scene.fill_light(0.8, -0.2, 0.9, 0.42);
 scene.ambient(0.24);
 scene.background(0.04, 0.06, 0.1);
+let movie = scene.animation("build/tween.apng", 160, 120, 30);
 let frames_per_segment = 30;
 for (segment in range(0, keys.len() - 1)) {
   let a = keys.at(segment);
@@ -25,7 +26,9 @@ for (segment in range(0, keys.len() - 1)) {
     shape.position(x, y, z).color(r, g, blue);
     let frame_index = segment * (frames_per_segment - 1) + step;
     scene.render_png("build/tween-" + str(frame_index) + ".png", 160, 120);
+    movie.add_frame();
   }
 }
+movie.finish();
 end _dsl_
 savedsl(p, "build/tween.dslb");
