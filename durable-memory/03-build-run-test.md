@@ -3,9 +3,11 @@
 ## Toolchain and SDK
 
 - Checked on Linux ARM64, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1.
-- DSL v4 examples use the source compiler at `/home/ubuntu/lmctl-mono/lmscript/dsl.ts`. The global released `lmscript` is v3 and cannot compile these examples. `scripts/lmscript-mono.sh` invokes the exported compiler API directly with Node's TypeScript stripping; `LMSCRIPT_SOURCE` selects another mono checkout. No file in `lmctl-mono` is changed.
-- `sdk.lock` pins cpp-dsl-sdk `90e100090534eff869c512156742727cf1723ccb` and the vendored header hash. `scripts/sync-sdk.sh` resolves `origin/main` by default (override `CPP_DSL_SDK_REF`) and `--verify` checks the vendored header.
-- Host API declarations use typed v4 registry signatures. `lmcad --dsl-signatures schema/lmcad.dsl.json` is byte-for-byte checked against compiler `--dsl-signatures` output in the test script.
+- The current language/compiler/bytecode version is v5 and the schema format is v2. The examples compile with `/home/ubuntu/lmctl-mono/lmscript/dsl.ts` through `scripts/lmscript-mono.sh`; this adapter imports the real compiler and does not edit or copy it. `test.sh` prefers a PATH `lmscript` that accepts `--dsl-signatures` for schema v2; otherwise it falls back to the adapter. `LMSCRIPT_BIN` is an optional explicit override.
+- At this resync, PATH `lmscript` was 0.2.333 and rejected `--dsl-signatures`; all four examples therefore used the mono `dsl.ts` adapter and emitted v5 bytecode.
+- `sdk.lock` pins cpp-dsl-sdk `b8fd2858a6313ba256b25b6dd250ee2404bc6ef3` and the SHA-256 of the vendored `cpp/dslvm.hpp`. `scripts/sync-sdk.sh` resolves `origin/main` by default; `--verify` checks the copied header.
+- CMake embeds the exact schema file bytes in a generated header. `lmcad --schema` prints those bytes; no external schema file is needed at runtime. `lmcad --dsl-signatures` prints the registry's canonical declarations, checked byte-for-byte against the compiler's schema output.
+- `lmcad --dsl A.dslb B.dslb` runs both programs sequentially against the same schema, registry, and host context. The removed `--schema FILE` input syntax is rejected.
 - No renderer, PNG, or mesh-export library is linked. PNG uses stored DEFLATE blocks; PPM/STL/OBJ are written in-tree.
 
 ## Build and examples
@@ -14,9 +16,9 @@ See the copyable commands in `README.md`. Examples: still-life PNG/PPM/OBJ, 12-f
 
 ## Test results
 
-`./test.sh` passes **14 checks**: SDK pin, native build, four v4 compiles, schema/host signature diff, four executions, PNG dimensions and visible pixels, 12-triangle STL, 30 distinct tween frames, PNG CRC/Adler, raster and animation determinism, wrong-schema/bad-argument/camera refusals, host validation cases (including int64 dimensions and stable keyframe handles), three-keyframe boundary/endpoint checks, and relocated adapter parsing. The native unit checks cover CSV quoting/CRLF, complete finite numbers, missing/extra columns, and host row/record limits. A fresh clone under `/tmp` also passes.
+`./test.sh` passes **16 checks**: SDK pin, native build, four v5 compiles, embedded schema byte identity, host/compiler signature parity, four example executions, sequential multi-bytecode execution, PNG dimensions/pixels, 12-triangle STL, 30 distinct tween frames, PNG CRC/Adler, raster and animation determinism, removed-schema-option/bad-argument/camera refusals, host validation cases, three-keyframe boundary/endpoint checks, and relocated adapter parsing. The native unit checks cover CSV quoting/CRLF, complete finite numbers, missing/extra columns, and host row/record limits.
 
-The ASan+UBSan variant (`BUILD_DIR=build-sanitize ./test.sh` after configuring with sanitizer flags) also passed all **14 checks** on this box. Tween frames 0, 14, and 29 were visually inspected: the sphere moves left to right and changes from red through purple to blue. The three-keyframe regression produces 59 unique frames with exact first, shared, and final endpoints.
+The ASan+UBSan and fresh-clone results for the current revision are recorded after the resync verification run. The still-life PNG was visually inspected: the red box, blue sphere, and gold cylinder render against the configured dark background.
 
 ## Link checks
 

@@ -1,256 +1,322 @@
 {
-  "dsl.schema": 1,
+  "dsl.schema": 2,
   "name": "lmcad",
   "types": {
     "Scene": {
       "methods": {
-        "box": {
-          "params": [
-            "float",
-            "float",
-            "float",
-            "Material"
-          ],
-          "returns": "Shape"
-        },
-        "sphere": {
-          "params": [
-            "float",
-            "Material"
-          ],
-          "returns": "Shape"
-        },
-        "cylinder": {
-          "params": [
-            "float",
-            "float",
-            "Material"
-          ],
-          "returns": "Shape"
-        },
-        "camera": {
-          "params": [
-            "float",
-            "float",
-            "float",
-            "float",
-            "float",
-            "float",
-            "float"
-          ],
-          "returns": "Camera"
-        },
-        "directional_light": {
-          "params": [
-            "float",
-            "float",
-            "float",
-            "float"
-          ],
-          "returns": "Light"
-        },
-        "background": {
-          "params": [
-            "float",
-            "float",
-            "float"
-          ],
-          "returns": "Scene"
-        },
-        "render_png": {
-          "params": [
-            "string",
-            "int",
-            "int"
-          ],
-          "returns": "void"
-        },
-        "render_ppm": {
-          "params": [
-            "string",
-            "int",
-            "int"
-          ],
-          "returns": "void"
-        },
-        "export_stl": {
-          "params": [
-            "string"
-          ],
-          "returns": "void"
-        },
-        "export_obj": {
-          "params": [
-            "string"
-          ],
-          "returns": "void"
-        }
+        "box": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "Material"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "sphere": [
+          {
+            "params": [
+              "float",
+              "Material"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "cylinder": [
+          {
+            "params": [
+              "float",
+              "float",
+              "Material"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "camera": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Camera"
+          }
+        ],
+        "directional_light": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Light"
+          }
+        ],
+        "background": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Scene"
+          }
+        ],
+        "render_png": [
+          {
+            "params": [
+              "string",
+              "int",
+              "int"
+            ],
+            "returns": "void"
+          }
+        ],
+        "render_ppm": [
+          {
+            "params": [
+              "string",
+              "int",
+              "int"
+            ],
+            "returns": "void"
+          }
+        ],
+        "export_stl": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "void"
+          }
+        ],
+        "export_obj": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "void"
+          }
+        ]
       }
     },
     "Shape": {
       "methods": {
-        "translate": {
-          "params": [
-            "float",
-            "float",
-            "float"
-          ],
-          "returns": "Shape"
-        },
-        "rotate": {
-          "params": [
-            "float",
-            "float",
-            "float"
-          ],
-          "returns": "Shape"
-        },
-        "scale": {
-          "params": [
-            "float",
-            "float",
-            "float"
-          ],
-          "returns": "Shape"
-        },
-        "visible": {
-          "params": [
-            "bool"
-          ],
-          "returns": "Shape"
-        },
-        "name": {
-          "params": [
-            "string"
-          ],
-          "returns": "Shape"
-        },
-        "position": {
-          "params": [
-            "float",
-            "float",
-            "float"
-          ],
-          "returns": "Shape"
-        },
-        "color": {
-          "params": [
-            "float",
-            "float",
-            "float"
-          ],
-          "returns": "Shape"
-        }
+        "translate": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "rotate": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "scale": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "visible": [
+          {
+            "params": [
+              "bool"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "name": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "position": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "color": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Shape"
+          }
+        ]
       }
     },
     "Camera": {
       "methods": {
-        "look_at": {
-          "params": [
-            "float",
-            "float",
-            "float",
-            "float",
-            "float",
-            "float"
-          ],
-          "returns": "Camera"
-        },
-        "clipping": {
-          "params": [
-            "float",
-            "float"
-          ],
-          "returns": "Camera"
-        }
+        "look_at": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Camera"
+          }
+        ],
+        "clipping": [
+          {
+            "params": [
+              "float",
+              "float"
+            ],
+            "returns": "Camera"
+          }
+        ]
       }
     },
     "Material": {
       "methods": {
-        "color": {
-          "params": [
-            "float",
-            "float",
-            "float"
-          ],
-          "returns": "Material"
-        },
-        "roughness": {
-          "params": [
-            "float"
-          ],
-          "returns": "Material"
-        }
+        "color": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Material"
+          }
+        ],
+        "roughness": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Material"
+          }
+        ]
       }
     },
     "Light": {
       "methods": {
-        "intensity": {
-          "params": [
-            "float"
-          ],
-          "returns": "Light"
-        }
+        "intensity": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Light"
+          }
+        ]
       }
     },
     "Keyframes": {
       "methods": {
-        "len": {
-          "params": [],
-          "returns": "int"
-        },
-        "at": {
-          "params": [
-            "int"
-          ],
-          "returns": "Keyframe"
-        }
+        "len": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "at": [
+          {
+            "params": [
+              "int"
+            ],
+            "returns": "Keyframe"
+          }
+        ]
       }
     },
     "Keyframe": {
       "methods": {
-        "time": {
-          "params": [],
-          "returns": "float"
-        },
-        "x": {
-          "params": [],
-          "returns": "float"
-        },
-        "y": {
-          "params": [],
-          "returns": "float"
-        },
-        "z": {
-          "params": [],
-          "returns": "float"
-        },
-        "r": {
-          "params": [],
-          "returns": "float"
-        },
-        "g": {
-          "params": [],
-          "returns": "float"
-        },
-        "b": {
-          "params": [],
-          "returns": "float"
-        }
+        "time": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "x": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "y": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "z": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "r": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "g": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "b": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ]
       }
     }
   },
   "functions": {
-    "material": {
-      "params": [],
-      "returns": "Material"
-    },
-    "read_keyframes_csv": {
-      "params": [
-        "string"
-      ],
-      "returns": "Keyframes"
-    }
+    "material": [
+      {
+        "params": [],
+        "returns": "Material"
+      }
+    ],
+    "read_keyframes_csv": [
+      {
+        "params": [
+          "string"
+        ],
+        "returns": "Keyframes"
+      }
+    ]
   },
   "context": {
     "scene": "Scene"

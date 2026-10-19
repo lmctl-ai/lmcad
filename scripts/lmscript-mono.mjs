@@ -11,9 +11,9 @@ const sourceRoot = resolve(process.env.LMSCRIPT_SOURCE ?? join(homedir(), 'lmctl
 let dsl;
 try {
   dsl = await import(pathToFileURL(join(sourceRoot, 'dsl.ts')).href);
-  if (dsl.DSL_VERSION !== 4) throw new Error(`expected DSL v4, found v${dsl.DSL_VERSION}`);
+  if (dsl.DSL_VERSION !== 5) throw new Error(`expected DSL v5, found v${dsl.DSL_VERSION}`);
 } catch (error) {
-  console.error(`error: cannot load DSL v4 compiler from ${sourceRoot}; set LMSCRIPT_SOURCE to the lmscript source directory. ${error.message}`);
+  console.error(`error: cannot load DSL v5 compiler from ${sourceRoot}; set LMSCRIPT_SOURCE to the lmscript source directory. ${error.message}`);
   process.exit(2);
 }
 const args = process.argv.slice(2);

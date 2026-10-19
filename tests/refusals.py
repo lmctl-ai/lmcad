@@ -15,7 +15,7 @@ def refuses(name, body, error):
     bytecode = work / (name + '.dslb')
     source.write_text(f'p = _dsl_ schema="{root}/schema/lmcad.dsl.json";\n{body}\nend _dsl_\nsavedsl(p, "{bytecode}");\n')
     subprocess.run([compiler, str(source)], check=True, stdout=subprocess.DEVNULL)
-    run = subprocess.run([host, '--dsl', str(bytecode), '--schema', 'schema/lmcad.dsl.json'], capture_output=True, text=True)
+    run = subprocess.run([host, '--dsl', str(bytecode)], capture_output=True, text=True)
     assert run.returncode == 3 and error in run.stdout, (name, run.returncode, run.stdout, run.stderr)
 
 shape = 'let mat = material(); let s = scene.box(2.0, 2.0, 2.0, mat);'
@@ -46,7 +46,7 @@ scene.background(first.r(), first.g(), first.b());'''
 source = work / 'stable-rows.lms'; bytecode = work / 'stable-rows.dslb'
 source.write_text(f'p = _dsl_ schema="{root}/schema/lmcad.dsl.json";\n{body}\nend _dsl_\nsavedsl(p, "{bytecode}");\n')
 subprocess.run([compiler, str(source)], check=True, stdout=subprocess.DEVNULL)
-subprocess.run([host, '--dsl', str(bytecode), '--schema', 'schema/lmcad.dsl.json'], check=True, stdout=subprocess.DEVNULL)
+subprocess.run([host, '--dsl', str(bytecode)], check=True, stdout=subprocess.DEVNULL)
 for index in [-1, 2]:
     refuses('keyframe-index', f'let keys = read_keyframes_csv("examples/data/keyframes.csv"); keys.at({index});', 'keyframe index out of range')
 refuses('keyframe-collection-limit', 'for (i in range(0, 4097)) { read_keyframes_csv("examples/data/keyframes.csv"); }', 'object limit exceeded')

@@ -1,6 +1,7 @@
 #include "dslvm.hpp"
 #include "render.hpp"
 #include "keyframes.hpp"
+#include "schema_embedded.hpp"
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -86,12 +87,43 @@ void register_host(dslvm::Registry& r,Host& h){
 }
 }
 int main(int argc,char** argv){
-  if(argc==3&&std::string(argv[1])=="--dsl-signatures") { Host host; dslvm::Registry reg; register_host(reg,host); for(const auto& s:reg.signatures())std::cout<<s<<"\n"; return 0; }
-  std::string dsl,schema;
-  for(int i=1;i<argc;i++){std::string a=argv[i];if(a=="--dsl"||a=="--schema"){if(i+1>=argc){std::cerr<<"error: "<<a<<" needs a value\n";return 2;}if(a=="--dsl")dsl=argv[++i];else schema=argv[++i];}else{std::cerr<<"usage: lmcad --dsl FILE --schema FILE\n";return 2;}}
-  Host host;dslvm::Registry reg;register_host(reg,host);dslvm::Program program;
-  if(dsl.empty()||schema.empty()){std::cerr<<"error: --dsl FILE and --schema FILE are required\n";return 2;}
-  try{program=dslvm::Program::load(dslvm::read_file(dsl),dslvm::read_file(schema),reg);}catch(const dslvm::Error& e){return dslvm::report_error("load",e);}
-  dslvm::Context ctx;ctx.set("scene",&host);try{program.run(ctx,reg);}catch(const dslvm::Error& e){return dslvm::report_error("run",e);}
-  return dslvm::report_ok();
+  if(argc==2&&std::string(argv[1])=="--schema") {
+    std::cout.write(reinterpret_cast<const char*>(lmcad::embedded_schema),
+                    static_cast<std::streamsize>(lmcad::embedded_schema_size));
+    return std::cout ? 0 : 4;
+  }
+  Host host;
+  dslvm::Registry reg;
+  register_host(reg,host);
+  if(argc==2&&std::string(argv[1])=="--dsl-signatures") {
+    for(const auto& signature:reg.signatures()) std::cout<<signature<<"\n";
+    return 0;
+  }
+  if(argc<3||std::string(argv[1])!="--dsl") {
+    std::cerr<<"usage: lmcad --schema | --dsl-signatures | --dsl FILE [FILE ...]\n";
+    return 2;
+  }
+  const std::string schema(reinterpret_cast<const char*>(lmcad::embedded_schema),
+                           lmcad::embedded_schema_size);
+  dslvm::Context context;
+  context.set("scene",&host);
+  for(int i=2;i<argc;i++) {
+    if(std::string(argv[i]).empty()||std::string(argv[i]).rfind("--",0)==0) {
+      std::cerr<<"usage: lmcad --schema | --dsl-signatures | --dsl FILE [FILE ...]\n";
+      return 2;
+    }
+    dslvm::Program program;
+    try {
+      program=dslvm::Program::load(dslvm::read_file(argv[i]),schema,reg);
+    } catch(const dslvm::Error& error) {
+      return dslvm::report_error("load",error);
+    }
+    try {
+      program.run(context,reg);
+    } catch(const dslvm::Error& error) {
+      return dslvm::report_error("run",error);
+    }
+    dslvm::report_ok();
+  }
+  return 0;
 }

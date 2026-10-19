@@ -23,7 +23,7 @@ source.write_bytes(body.replace('\n', '\r\n').encode())
 command = [str(work / 'scripts/lmscript-mono.sh'), str(source)]
 run = subprocess.run(command, cwd=work, capture_output=True, text=True)
 assert run.returncode == 0, run.stderr
-assert (work / 'output.dslb').read_bytes()[:6] == b'DSLB\x00\x04'
+assert (work / 'output.dslb').read_bytes()[:6] == b'DSLB\x00\x05'
 for text in [body.replace('savedsl(p,', 'savedsl(other,'), body + body]:
     source.write_text(text)
     run = subprocess.run(command, cwd=work, capture_output=True, text=True)

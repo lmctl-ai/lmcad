@@ -16,7 +16,7 @@ def run(name, text):
     path = work / (name + '.lms'); output = work / (name + '.dslb')
     path.write_text(text)
     subprocess.run([compiler, str(path), str(output)], check=True, stdout=subprocess.DEVNULL)
-    subprocess.run([host, '--dsl', str(output), '--schema', schema], check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([host, '--dsl', str(output)], check=True, stdout=subprocess.DEVNULL)
 
 run('multi', source)
 frames = [work / f'frame-{i}.png' for i in range(59)]

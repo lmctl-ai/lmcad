@@ -8,8 +8,9 @@
 //   dslvm::Value                         tagged value: VOID, INT (int64, two's complement), FLOAT (binary64), STR (UTF-8), BOOL, OBJ (host pointer + schema type name)
 //   dslvm::Args                          std::vector<Value> of call arguments, in order
 //   dslvm::Registry                      the implementation of the schema, declared with its types: function(name, {param types}, return
-//                                        type, fn), method(type, name, {param types}, return type, fn), context(name, type); duplicates are
-//                                        refused; signatures() lists the canonical strings `lmscript --dsl-signatures SCHEMA` prints, so a
+//                                        type, fn), method(type, name, {param types}, return type, fn), context(name, type); entries are
+//                                        keyed by canonical signature, distinct parameter tuples overload a name, and duplicate parameter
+//                                        tuples are refused; signatures() lists the canonical strings `lmscript --dsl-signatures SCHEMA` prints, so a
 //                                        host test diffs registry and schema (spec v4 S0, a consistency check between two sources of truth,
 //                                        not a run-time defense: R33/R34, the VM checks nothing at call time)
 //   dslvm::Context                       the live objects of one run: set(name, pointer)
@@ -24,7 +25,7 @@
 //   dslvm::VERSION                       the bytecode format version this SDK reads (and nothing else: no backward compatibility)
 //   dslvm::sha256 / hex / read_file      helpers the hosts use for the schema binding and files
 //
-// Bytecode v4 (big-endian, fixed widths, IEEE-754 binary64; spec v4 S1'): magic "DSLB", u16 version 4, sha256(schema bytes);
+// Bytecode v5 (big-endian, fixed widths, IEEE-754 binary64): magic "DSLB", u16 version 5, sha256(schema bytes);
 // constants: u32 count, each u8 tag (1 = string) + u32 length + UTF-8; imports: u16 count, each u32 constant index of a canonical
 // signature (`fn NAME(T1, T2) -> R`, `method Type.name(T1) -> R`) resolved against the registry at load; context: u16 count,
 // each (u32 name constant, u32 type constant) checked against the registry's declarations; locals: u16 count, each (u32 type-name
@@ -32,13 +33,14 @@
 // against it); code: u32 length + code ending with HALT; lines: u32 count, each (u32 pc, u32 line, u16 column), may be empty.
 // Opcodes: enum Op below (PUSH_INT carries an i64, PUSH_STR a u32 constant index, LOAD_CTX a u16 context index, CALL_FN and
 // CALL_METHOD a u16 import index + u8 argc). FOR_RANGE carries counter/end local slots and an exit displacement; FOR_NEXT carries
-// the hidden end slot and a back displacement. Int arithmetic is 64-bit two's complement with wraparound (no overflow trap, R34);
+// the hidden end slot and a back displacement. WHILE_BEGIN marks a paired loop head, WHILE_TEST branches to its exit on false,
+// and LOOP_BACK returns only to that paired head. Int arithmetic is 64-bit two's complement with wraparound (no overflow trap, R34);
 // division and remainder by zero are run-time errors. The living specification is lmctl-mono
 // lmscript/durable-memory/design/dsl-language.md; the compiler is lmscript's dsl.ts.
 //
 // Guarantees of load(): wrong magic, other version (including v3), schema-hash mismatch, truncation, trailing bytes, unknown
 // constant tags, undecodable instructions, out-of-range constants/locals/imports/context indices, jumps that do not land on an
-// instruction start or go backwards except for paired structured range loops, missing HALT, context declarations
+// instruction start or go backwards except for paired structured loops, missing HALT, context declarations
 // and import signatures the registry does not provide are all refused with a message. The language and the VM impose no
 // memory or time limits (operator decision, 2026-10-18): there is no stack cap, no locals cap and no string-size cap.
 #pragma once
@@ -136,15 +138,23 @@ struct MethodEntry { Signature sig; Method fn; };
 inline std::string signature_text(const Signature& s) { std::string out = "("; for (size_t i = 0; i < s.params.size(); ++i) out += (i ? ", " : "") + s.params[i]; return out + ") -> " + s.returns; }
 
 class Registry {
+  struct NamedFunction { std::string name; FunctionEntry entry; };
+  struct NamedMethod { std::string type, name; MethodEntry entry; };
  public:
   // Type names are the schema's: int, float, string, bool, void (returns only) or an object type name. The arity the loader
-  // checks is params.size(). Registering a name twice is an error (two implementations of one schema entry).
+  // checks is params.size(). Registering a name with the same parameter tuple twice is an error; distinct tuples are overloads.
   Registry& function(const std::string& name, std::vector<std::string> params, std::string returns, Function fn) {
-    if (!functions_.emplace(name, FunctionEntry{{std::move(params), std::move(returns)}, std::move(fn)}).second) throw Error("LOAD_UNBOUND", "registry: function '" + name + "' is registered twice");
+    Signature sig{std::move(params), std::move(returns)};
+    for (const auto& f : functions_) if (f.second.name == name && f.second.entry.sig.params == sig.params) throw Error("LOAD_UNBOUND", "registry: function '" + name + signature_text(sig) + "' is registered twice");
+    std::string key = "fn " + name + signature_text(sig);
+    functions_.emplace(std::move(key), NamedFunction{name, FunctionEntry{std::move(sig), std::move(fn)}});
     return *this;
   }
   Registry& method(const std::string& type, const std::string& name, std::vector<std::string> params, std::string returns, Method fn) {
-    if (!methods_.emplace(type + "." + name, MethodEntry{{std::move(params), std::move(returns)}, std::move(fn)}).second) throw Error("LOAD_UNBOUND", "registry: method '" + type + "." + name + "' is registered twice");
+    Signature sig{std::move(params), std::move(returns)};
+    for (const auto& m : methods_) if (m.second.type == type && m.second.name == name && m.second.entry.sig.params == sig.params) throw Error("LOAD_UNBOUND", "registry: method '" + type + "." + name + signature_text(sig) + "' is registered twice");
+    std::string key = "method " + type + "." + name + signature_text(sig);
+    methods_.emplace(std::move(key), NamedMethod{type, name, MethodEntry{std::move(sig), std::move(fn)}});
     return *this;
   }
   Registry& context(const std::string& name, const std::string& type) {
@@ -155,27 +165,29 @@ class Registry {
   std::vector<std::string> signatures() const {
     std::vector<std::string> out;
     for (auto& c : context_) out.push_back("context " + c.first + ": " + c.second);
-    for (auto& f : functions_) out.push_back("fn " + f.first + signature_text(f.second.sig));
-    for (auto& m : methods_) out.push_back("method " + m.first + signature_text(m.second.sig));
+    for (auto& f : functions_) out.push_back(f.first);
+    for (auto& m : methods_) out.push_back(m.first);
     std::sort(out.begin(), out.end()); return out;
   }
-  const FunctionEntry* find_function(const std::string& name) const { auto it = functions_.find(name); return it == functions_.end() ? nullptr : &it->second; }
-  const MethodEntry* find_method(const std::string& type, const std::string& name) const { auto it = methods_.find(type + "." + name); return it == methods_.end() ? nullptr : &it->second; }
+  // Name-only lookup is retained for host introspection; overloaded names are intentionally ambiguous.
+  const FunctionEntry* find_function(const std::string& name) const { const FunctionEntry* found = nullptr; for (auto& f : functions_) if (f.second.name == name) { if (found) return nullptr; found = &f.second.entry; } return found; }
+  const MethodEntry* find_method(const std::string& type, const std::string& name) const { const MethodEntry* found = nullptr; for (auto& m : methods_) if (m.second.type == type && m.second.name == name) { if (found) return nullptr; found = &m.second.entry; } return found; }
   const std::string* context_type(const std::string& name) const { auto it = context_.find(name); return it == context_.end() ? nullptr : &it->second; }
   // The entry whose canonical string is `fn NAME(...) -> R`; null when the host declares no such signature (the loader names
   // the host's own signature for that name in its message, so a type drift between schema and host is one line to read).
-  const FunctionEntry* function_by_signature(const std::string& canonical) const { for (auto& f : functions_) if ("fn " + f.first + signature_text(f.second.sig) == canonical) return &f.second; return nullptr; }
-  const MethodEntry* method_by_signature(const std::string& canonical) const { for (auto& m : methods_) if ("method " + m.first + signature_text(m.second.sig) == canonical) return &m.second; return nullptr; }
+  const FunctionEntry* function_by_signature(const std::string& canonical) const { auto it = functions_.find(canonical); return it == functions_.end() ? nullptr : &it->second.entry; }
+  const MethodEntry* method_by_signature(const std::string& canonical) const { auto it = methods_.find(canonical); return it == methods_.end() ? nullptr : &it->second.entry; }
   std::string declared_for(const std::string& canonical) const {  // "the host declares fn x(float) -> int" or "" when the name is unknown
     size_t sp = canonical.find(' '), par = canonical.find('(');
     if (sp == std::string::npos || par == std::string::npos || par < sp) return "";
     std::string name = canonical.substr(sp + 1, par - sp - 1);
-    if (canonical.compare(0, 3, "fn ") == 0) { auto f = functions_.find(name); return f == functions_.end() ? "" : "fn " + name + signature_text(f->second.sig); }
-    auto m = methods_.find(name); return m == methods_.end() ? "" : "method " + name + signature_text(m->second.sig);
+    if (canonical.compare(0, 3, "fn ") == 0) { std::vector<std::string> have; for (auto& f : functions_) if (f.second.name == name) have.push_back(f.first); std::sort(have.begin(), have.end()); std::string out; for (const auto& s : have) out += (out.empty() ? "" : ", ") + s; return out; }
+    auto dot = name.find('.'); if (dot == std::string::npos) return "";
+    std::vector<std::string> have; for (auto& m : methods_) if (m.second.type + "." + m.second.name == name) have.push_back(m.first); std::sort(have.begin(), have.end()); std::string out; for (const auto& s : have) out += (out.empty() ? "" : ", ") + s; return out;
   }
  private:
-  std::map<std::string, FunctionEntry> functions_;
-  std::map<std::string, MethodEntry> methods_;
+  std::map<std::string, NamedFunction> functions_;
+  std::map<std::string, NamedMethod> methods_;
   std::map<std::string, std::string> context_;
 };
 
@@ -217,7 +229,9 @@ enum Op : uint8_t {
   MATH = 0x32,
   // v4 (spec S1'): integer remainder (the dividend's sign; zero divisor is a run-time error).
   MOD_I = 0x33,
-  FOR_RANGE = 0x2f, FOR_NEXT = 0x31
+  FOR_RANGE = 0x2f, FOR_NEXT = 0x31,
+  // v5: structured while loop markers. LOOP_BACK is the only general backward edge.
+  WHILE_BEGIN = 0x34, WHILE_TEST = 0x35, LOOP_BACK = 0x36
 };
 enum MathFn : uint8_t {
   MATH_SIN_F = 0, MATH_COS_F = 1, MATH_SQRT_F = 2, MATH_ABS_F = 3,
@@ -227,7 +241,7 @@ enum MathFn : uint8_t {
   MATH_ABS_I = 14, MATH_MIN_I = 15, MATH_MAX_I = 16, MATH_CLAMP_I = 17
 };
 static const char MAGIC[4] = {'D', 'S', 'L', 'B'};
-static const uint16_t VERSION = 4;
+static const uint16_t VERSION = 5;
 // Convert the wire representation explicitly so decoding does not depend on whether a C++ implementation
 // defines an out-of-range unsigned-to-signed conversion as a two's-complement reinterpretation.
 inline int64_t from_twos_complement(uint64_t u) {
@@ -258,6 +272,7 @@ class Program {
   struct Line { uint32_t pc, line; uint16_t column; };
   struct RunStats { uint64_t instructions = 0; };
   struct Loop { uint16_t counter, end; size_t opener_next; };
+  struct VerifiedInstr { size_t pc, next, target = 0; uint8_t op; size_t depth; size_t owner; };
 
   // Parses, binds and verifies. Nothing executes here. Throws dslvm::Error with a message naming the problem.
   static Program load(const std::string& bytecode, const std::string& schemaBytes, const Registry& reg) {
@@ -483,6 +498,13 @@ class Program {
           if (locals[loop.counter].i < locals[loop.end].i) jump(rel);
           break;
         }
+        case WHILE_BEGIN: break;
+        case WHILE_TEST: {
+          int32_t rel = r.i32(); Value condition = pop();
+          if (!condition.b) jump(rel);
+          break;
+        }
+        case LOOP_BACK: jump(r.i32()); break;
         case DUP: {
           if (stack.empty()) throw Error("RUN_ERROR", "stack underflow");
           push(stack.back()); break;
@@ -505,12 +527,14 @@ class Program {
   const Line* line_of(size_t pc) const { const Line* best = nullptr; for (auto& l : lines_) { if (l.pc <= pc) best = &l; else break; } return best; }
 
  private:
-  // Static verification: every instruction decodes, every index is in range, every ordinary jump remains in its lexical
-  // region and moves forward, and range loops are properly paired/nested. Imports and context were already resolved above.
+  // Static verification: every instruction decodes, every index is in range, ordinary jumps remain in their lexical
+  // region (or break exactly one loop), and paired range/while loops nest properly. Imports and context are already bound.
   void verify() {
-    struct Instr { size_t pc, next, target = 0; uint8_t op; size_t depth; size_t owner; };
-    struct Open { size_t pc, next, exit; uint16_t counter, end; };
-    std::vector<Instr> insns; std::vector<Open> open; std::vector<std::pair<size_t, int64_t>> ordinary;
+    struct Open { uint8_t op; size_t pc, next, exit; uint16_t counter, end; bool tested; size_t parent; size_t test = 0; };
+    struct LoopRegion { size_t exit, parent, test; uint8_t op; uint16_t counter, end; };
+    std::vector<VerifiedInstr> insns; std::vector<Open> open; std::vector<std::pair<size_t, int64_t>> ordinary;
+    std::vector<std::pair<size_t, int64_t>> while_exits;
+    std::map<size_t, LoopRegion> regions;
     std::vector<uint16_t> used_loop_slots;
     loops_.clear();
     Reader r(code_);
@@ -560,8 +584,8 @@ class Program {
         }
         case JUMP: case JUMP_IF_FALSE: case JUMP_IF_TRUE: {
           int32_t rel = r.i32();
-          if (rel < 0) throw Error("LOAD_BAD_BYTECODE", "jump at offset " + std::to_string(pc) + " goes backwards (only FOR_NEXT may jump backward)");
-          ordinary.emplace_back(pc, int64_t(r.pos()) + rel); break;
+          if (rel < 0) throw Error("LOAD_BAD_BYTECODE", "jump at offset " + std::to_string(pc) + " goes backwards (only paired LOOP_BACK may jump backward)");
+          insns.back().target = size_t(int64_t(r.pos()) + rel); ordinary.emplace_back(pc, int64_t(r.pos()) + rel); break;
         }
         case FOR_RANGE: {
           uint16_t counter = r.u16(), end = r.u16(); int32_t rel = r.i32();
@@ -572,31 +596,61 @@ class Program {
           }
           used_loop_slots.push_back(counter); used_loop_slots.push_back(end);
           if (rel < 0) throw Error("LOAD_BAD_BYTECODE", "FOR_RANGE at offset " + std::to_string(pc) + " exits backwards");
-          open.push_back({pc, r.pos(), size_t(int64_t(r.pos()) + rel), counter, end});
+          open.push_back({FOR_RANGE, pc, r.pos(), size_t(int64_t(r.pos()) + rel), counter, end, false, owner});
+          insns.back().target = size_t(int64_t(r.pos()) + rel);
           break;
         }
         case FOR_NEXT: {
           uint16_t encoded_end = r.u16(); int32_t rel = r.i32();
-          if (open.empty()) throw Error("LOAD_BAD_BYTECODE", "FOR_NEXT at offset " + std::to_string(pc) + " has no matching FOR_RANGE");
+          if (open.empty() || open.back().op != FOR_RANGE) throw Error("LOAD_BAD_BYTECODE", "FOR_NEXT at offset " + std::to_string(pc) + " has no matching FOR_RANGE");
           Open loop = open.back(); open.pop_back();
           if (encoded_end != loop.end) throw Error("LOAD_BAD_BYTECODE", "FOR_NEXT at offset " + std::to_string(pc) + " names end slot " + std::to_string(encoded_end) + ", expected " + std::to_string(loop.end));
           if (int64_t(r.pos()) + rel != int64_t(loop.next)) throw Error("LOAD_BAD_BYTECODE", "FOR_NEXT at offset " + std::to_string(pc) + " must return to its FOR_RANGE body");
           if (loop.exit != r.pos()) throw Error("LOAD_BAD_BYTECODE", "FOR_RANGE at offset " + std::to_string(loop.pc) + " must exit immediately after its FOR_NEXT");
           loops_[pc] = Loop{loop.counter, loop.end, loop.next};
+          insns.back().target = size_t(int64_t(r.pos()) + rel);
+          regions[loop.pc] = LoopRegion{loop.exit, loop.parent, 0, FOR_RANGE, loop.counter, loop.end};
           break;
         }
-        case HALT: if (depth != 0) throw Error("LOAD_BAD_BYTECODE", "HALT inside range loop"); halted = true; break;
+        case WHILE_BEGIN:
+          open.push_back({WHILE_BEGIN, pc, r.pos(), 0, 0, 0, false, owner}); break;
+        case WHILE_TEST: {
+          int32_t rel = r.i32();
+          if (rel < 0) throw Error("LOAD_BAD_BYTECODE", "WHILE_TEST at offset " + std::to_string(pc) + " exits backwards");
+          if (open.empty() || open.back().op != WHILE_BEGIN) throw Error("LOAD_BAD_BYTECODE", "WHILE_TEST at offset " + std::to_string(pc) + " has no matching WHILE_BEGIN");
+          if (open.back().tested) throw Error("LOAD_BAD_BYTECODE", "WHILE_BEGIN at offset " + std::to_string(open.back().pc) + " has more than one WHILE_TEST");
+          open.back().test = pc; open.back().tested = true; open.back().exit = size_t(int64_t(r.pos()) + rel); insns.back().target = open.back().exit; while_exits.emplace_back(pc, int64_t(r.pos()) + rel); break;
+        }
+        case LOOP_BACK: {
+          int32_t rel = r.i32();
+          if (open.empty() || open.back().op != WHILE_BEGIN) throw Error("LOAD_BAD_BYTECODE", "LOOP_BACK at offset " + std::to_string(pc) + " has no matching WHILE_BEGIN");
+          Open loop = open.back(); open.pop_back();
+          if (!loop.tested) throw Error("LOAD_BAD_BYTECODE", "WHILE_BEGIN at offset " + std::to_string(loop.pc) + " has no WHILE_TEST");
+          if (int64_t(r.pos()) + rel != int64_t(loop.pc)) throw Error("LOAD_BAD_BYTECODE", "LOOP_BACK at offset " + std::to_string(pc) + " does not target its paired WHILE_BEGIN");
+          if (loop.exit != r.pos()) throw Error("LOAD_BAD_BYTECODE", "WHILE_TEST at offset " + std::to_string(loop.pc) + " must exit immediately after its LOOP_BACK");
+          regions[loop.pc] = LoopRegion{loop.exit, loop.parent, loop.test, WHILE_BEGIN, 0, 0};
+          insns.back().target = size_t(int64_t(r.pos()) + rel);
+          break;
+        }
+        case HALT: if (depth != 0) throw Error("LOAD_BAD_BYTECODE", "HALT inside loop"); halted = true; break;
         default: throw Error("LOAD_BAD_BYTECODE", "unknown opcode " + std::to_string(op) + " at offset " + std::to_string(pc));
       }
       insns.back().next = r.pos();
     }
-    if (!open.empty()) throw Error("LOAD_BAD_BYTECODE", "unclosed FOR_RANGE at offset " + std::to_string(open.back().pc));
+    if (!open.empty()) throw Error("LOAD_BAD_BYTECODE", std::string(open.back().op == FOR_RANGE ? "unclosed FOR_RANGE at offset " : "unclosed WHILE_BEGIN at offset ") + std::to_string(open.back().pc));
     if (!halted) throw Error("LOAD_BAD_BYTECODE", "code does not end with HALT");
-    auto find_insn = [&](int64_t target) -> const Instr* { for (auto& i : insns) if (int64_t(i.pc) == target) return &i; return nullptr; };
+    auto find_insn = [&](int64_t target) -> const VerifiedInstr* { for (auto& i : insns) if (int64_t(i.pc) == target) return &i; return nullptr; };
     for (auto& j : ordinary) {
-      const Instr* from = find_insn(int64_t(j.first)); const Instr* to = find_insn(j.second);
+      const VerifiedInstr* from = find_insn(int64_t(j.first)); const VerifiedInstr* to = find_insn(j.second);
       if (!to) throw Error("LOAD_BAD_BYTECODE", "jump at offset " + std::to_string(j.first) + " targets " + std::to_string(j.second) + ", not an instruction start");
-      if (!from || from->owner != to->owner) throw Error("LOAD_BAD_BYTECODE", "jump at offset " + std::to_string(j.first) + " crosses a range-loop boundary");
+      if (!from) throw Error("LOAD_BAD_BYTECODE", "internal verifier error: missing jump instruction");
+      auto loop = regions.find(from->owner);
+      if (loop != regions.end() && loop->second.op == WHILE_BEGIN &&
+          from->pc < loop->second.test && to->pc > loop->second.test)
+        throw Error("LOAD_BAD_BYTECODE", "jump at offset " + std::to_string(from->pc) + " skips its WHILE_TEST");
+      if (from->owner == to->owner) continue;
+      if (loop == regions.end() || size_t(j.second) != loop->second.exit || to->owner != loop->second.parent)
+        throw Error("LOAD_BAD_BYTECODE", "jump at offset " + std::to_string(j.first) + " crosses a loop boundary (only a break to the innermost loop exit is allowed)");
     }
     for (auto& i : insns) if (i.op == STORE_LOCAL) {
       Reader q(code_); q.seek(i.pc + 1); uint16_t slot = q.u16();
@@ -608,10 +662,90 @@ class Program {
       (void)counter;
       // Re-read the encoded exit displacement; its target must be a parent-region instruction.
       Reader q(code_); q.seek(i.pc + 1); q.u16(); q.u16(); int32_t rel = q.i32();
-      const Instr* to = find_insn(int64_t(q.pos()) + rel);
+      const VerifiedInstr* to = find_insn(int64_t(q.pos()) + rel);
       if (!to || to->owner != i.owner) throw Error("LOAD_BAD_BYTECODE", "FOR_RANGE at offset " + std::to_string(i.pc) + " exits to an invalid loop region");
     }
+    for (auto& j : while_exits) {
+      const VerifiedInstr* from = find_insn(int64_t(j.first)); const VerifiedInstr* to = find_insn(j.second);
+      if (!to || !from || from->owner == size_t(-1)) throw Error("LOAD_BAD_BYTECODE", "WHILE_TEST at offset " + std::to_string(j.first) + " exits to an invalid loop region");
+      auto loop = regions.find(from->owner);
+      if (loop == regions.end() || loop->second.op != WHILE_BEGIN || loop->second.exit != size_t(j.second) || to->owner != loop->second.parent)
+        throw Error("LOAD_BAD_BYTECODE", "WHILE_TEST at offset " + std::to_string(j.first) + " exits to an invalid loop region");
+    }
+    verify_stack(insns);
     for (auto& l : lines_) if (l.pc >= code_.size()) throw Error("LOAD_BAD_BYTECODE", "line table entry points at pc " + std::to_string(l.pc) + ", beyond the code");
+  }
+
+  void verify_stack(const std::vector<VerifiedInstr>& insns) const {
+    if (std::none_of(insns.begin(), insns.end(), [](const VerifiedInstr& i) { return i.op == FOR_RANGE || i.op == WHILE_BEGIN; })) return;
+    std::map<size_t, size_t> at;
+    for (size_t i = 0; i < insns.size(); ++i) at[insns[i].pc] = i;
+    std::vector<int64_t> incoming(insns.size(), -1);
+    std::vector<size_t> work;
+    if (insns.empty()) throw Error("LOAD_BAD_BYTECODE", "code is empty");
+    incoming[0] = 0; work.push_back(0);
+    auto merge = [&](size_t pc, int64_t depth) {
+      auto found = at.find(pc);
+      if (found == at.end()) throw Error("LOAD_BAD_BYTECODE", "control flow targets " + std::to_string(pc) + ", not an instruction start");
+      int64_t& old = incoming[found->second];
+      if (old < 0) { old = depth; work.push_back(found->second); }
+      else if (old != depth) throw Error("LOAD_BAD_BYTECODE", "inconsistent operand stack depth at control-flow join " + std::to_string(pc) + ": " + std::to_string(old) + " versus " + std::to_string(depth));
+    };
+    auto math_arity = [](uint8_t fn) -> int {
+      switch (fn) {
+        case MATH_SIN_F: case MATH_COS_F: case MATH_SQRT_F: case MATH_ABS_F: case MATH_FLOOR_F: case MATH_EASE_F:
+        case MATH_EASE_IN_F: case MATH_EASE_OUT_F: case MATH_INT_F: case MATH_ABS_I: return 1;
+        case MATH_POW_F: case MATH_MIN_F: case MATH_MAX_F: case MATH_MIN_I: case MATH_MAX_I: return 2;
+        case MATH_CLAMP_F: case MATH_LERP_F: case MATH_CLAMP_I: return 3;
+        default: throw Error("LOAD_BAD_BYTECODE", "unknown MATH function " + std::to_string(fn));
+      }
+    };
+    while (!work.empty()) {
+      const size_t ix = work.back(); work.pop_back();
+      const VerifiedInstr& in = insns[ix];
+      Reader r(code_); r.seek(in.pc); const uint8_t op = r.u8();
+      int pop = 0, push = 0;
+      bool fallthrough = true, branch = false, conditional = false;
+      switch (op) {
+        case PUSH_INT: case PUSH_FLOAT: case PUSH_STR: case PUSH_BOOL: case LOAD_LOCAL: case LOAD_CTX: push = 1; break;
+        case STORE_LOCAL: case POP: pop = 1; break;
+        case CALL_FN: {
+          uint16_t i = r.u16(); uint8_t argc = r.u8(); pop = argc; push = imports_[i].fn->sig.returns == "void" ? 0 : 1; break;
+        }
+        case CALL_METHOD: {
+          uint16_t i = r.u16(); uint8_t argc = r.u8(); pop = int(argc) + 1; push = imports_[i].method->sig.returns == "void" ? 0 : 1; break;
+        }
+        case EQ: case NE: case ADD_I: case SUB_I: case MUL_I: case DIV_I: case MOD_I: case ADD_F: case SUB_F: case MUL_F: case DIV_F:
+        case LT_I: case LE_I: case GT_I: case GE_I: case LT_F: case LE_F: case GT_F: case GE_F: case CONCAT: pop = 2; push = 1; break;
+        case NOT: case NEG_I: case NEG_F: case I2F: case I2S: case F2S: case B2S: pop = 1; push = 1; break;
+        case MATH: { uint8_t fn = r.u8(); pop = math_arity(fn); push = 1; break; }
+        case DUP: pop = 1; push = 2; break;
+        case JUMP: branch = true; fallthrough = false; break;
+        case JUMP_IF_FALSE: case JUMP_IF_TRUE: pop = 1; branch = true; conditional = true; break;
+        case FOR_RANGE: pop = 2; branch = true; conditional = true; break;
+        case FOR_NEXT: branch = true; conditional = true; break;
+        case WHILE_BEGIN: break;
+        case WHILE_TEST: pop = 1; branch = true; conditional = true; break;
+        case LOOP_BACK: branch = true; fallthrough = false; break;
+        case HALT: fallthrough = false; break;
+        default: throw Error("LOAD_BAD_BYTECODE", "unknown opcode during stack verification");
+      }
+      const int64_t depth = incoming[ix];
+      if (depth < pop) throw Error("LOAD_BAD_BYTECODE", "operand stack underflow at offset " + std::to_string(in.pc));
+      const int64_t after = depth - pop + push;
+      if (branch) merge(in.target, after);
+      if (conditional && (op == JUMP_IF_FALSE || op == JUMP_IF_TRUE || op == FOR_RANGE || op == FOR_NEXT || op == WHILE_TEST)) merge(in.next, after);
+      else if (fallthrough) {
+        if (ix + 1 < insns.size()) merge(in.next, after);
+        else throw Error("LOAD_BAD_BYTECODE", "control flow falls past the end of code");
+      }
+    }
+    for (size_t ix = 0; ix < insns.size(); ++ix) {
+      const auto& in = insns[ix];
+      if (in.op == WHILE_TEST && incoming[ix] >= 0 &&
+          incoming[ix] != incoming[at.at(in.owner)] + 1)
+        throw Error("LOAD_BAD_BYTECODE", "WHILE_TEST must leave the loop-head stack depth at offset " + std::to_string(in.pc));
+    }
   }
   std::vector<std::string> consts_; std::vector<Import> imports_; std::vector<std::string> context_; std::vector<Local> locals_; uint16_t max_stack_ = 0; std::string code_; std::vector<Line> lines_; std::map<size_t, Loop> loops_;
 };
