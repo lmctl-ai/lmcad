@@ -1,7 +1,7 @@
 # Open items
 
 1. Add a configurable camera up vector and expand perspective edge-case fixtures.
-2. Decide whether to implement lightweight mesh CSG or evaluate OpenCASCADE as an optional backend if robust Boolean operations become required.
+2. Improve camera up-vector control and consider anti-aliasing after the new CAD path is stable.
 3. Consider a compressed PNG implementation; current stored DEFLATE keeps dependencies out and output deterministic at the cost of file size.
 4. Define live versus copied material semantics and use roughness in shading or remove it from a future schema revision.
 5. Consider OBJ MTL support and a documented glTF subset if interchange requires them.
@@ -23,3 +23,14 @@ savedsl(p, "missing-context.dslb");
 ```
 
 `Program::run` returns a runtime error that the host did not provide `scene`. This is an SDK defensive check against an invalid host invocation, and illustrates the remaining mismatch with the operator's no-dynamic-VM-check direction. The schema's bytecode `LOAD_CTX` type and context registry binding are statically verified. No change was made to `cpp-dsl-sdk` or its conformance suite in this step; discuss with the SDK owner whether/when to remove the run-time guards after the language contract stabilizes.
+
+### DSL friction noted in Step 9
+
+The array-style hole/stud loops work, but arithmetic requires explicit numeric conversion in every range-derived coordinate:
+
+```lmscript
+let x = -20.0 + float(ix) * 8.0;
+let z = -4.0 + float(iz) * 8.0;
+```
+
+A more convenient form would allow safe widening of `int` to `float` in mixed numeric arithmetic, so the same code could write `-20.0 + ix * 8.0`. No compiler or SDK change was made; current scripts keep the explicit casts.
