@@ -28,9 +28,10 @@ key/fill lighting, ambient light, fitted camera framing, and 2x supersampling. T
 exports, APNG structure and extracted frames, deterministic output, and invalid-input refusals. The ASan/UBSan build uses
 `LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh`.
 
-The section example asserts that its two BRep half-volumes sum to the original 576.0. The mug BRep volume is 357.48602721261472;
-its closed STL mesh measures 353.073312, about 1.23% lower because curved faces are approximated by planar facets at the default
-0.1 model-unit tessellation deflection.
+The section example asserts that its two BRep half-volumes sum to the original 576.0. The polished mug's BRep volume is
+350.37572491370963; its closed STL mesh measures 350.153254, about 0.06% lower because curved faces are approximated by
+planar facets at the default 0.1 model-unit linear and 0.1-radian angular tessellation deflections. The mug profile avoids the raised
+collar transition and uses a 0.35-unit edge fillet for a continuous silhouette.
 
 The in-tree PNG/APNG writer uses deterministic LZ77 and fixed-Huffman DEFLATE, with stored blocks for incompressible data. APNG
 uses exact rational frame delays. Tests validate chunk CRCs and sequence, frame count, first-frame identity, changed frames, and

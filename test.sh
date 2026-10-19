@@ -85,7 +85,7 @@ hashes=[hashlib.sha256(p.read_bytes()).digest() for p in frames]; assert len(set
 assert (bdir/'loop-row.png').stat().st_size>1000
 for name in ('plate-with-holes','brick','vase','glyph-field','section-view','mug'):
     image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
-    ww,hh=struct.unpack_from('>II',image,16); expected=(540,405) if name=='mug' else (640,480) if name=='vase' else (720,540); assert (ww,hh)==expected,(name,ww,hh)
+    ww,hh=struct.unpack_from('>II',image,16); expected=(500,375) if name=='mug' else (560,420) if name=='vase' else (720,540); assert (ww,hh)==expected,(name,ww,hh)
     facets=(bdir/f'{name}.stl').read_bytes(); count=struct.unpack_from('<I',facets,80)[0]; assert count>(10 if name=='section-view' else 100) and len(facets)==84+count*50
 for name in ('section-view','mug'):
     image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'

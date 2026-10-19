@@ -126,7 +126,10 @@ Mesh tessellate(const TopoDS_Shape& shape,double tolerance){
   size_t faces=0,edges=0;
   for(TopExp_Explorer e(shape,TopAbs_FACE);e.More();e.Next())if(++faces>2000)throw std::runtime_error("CAD face limit exceeded (2000)");
   for(TopExp_Explorer e(shape,TopAbs_EDGE);e.More();e.Next())if(++edges>10000)throw std::runtime_error("CAD edge limit exceeded (10000)");
-  BRepMesh_IncrementalMesh mesher(shape,tolerance,false,0.15,false);if(!mesher.IsDone())throw std::runtime_error("BRepMesh tessellation failed");Mesh out;
+  // Revolved profiles need a finer angular chord so rims and inner walls do
+  // not show broad polygon bands. The linear deflection still bounds the
+  // absolute surface error for larger parts.
+  BRepMesh_IncrementalMesh mesher(shape,tolerance,false,0.1,false);if(!mesher.IsDone())throw std::runtime_error("BRepMesh tessellation failed");Mesh out;
   for(TopExp_Explorer e(shape,TopAbs_FACE);e.More();e.Next()){
     TopoDS_Face f=TopoDS::Face(e.Current());
     TopLoc_Location loc;Handle(Poly_Triangulation) tri=BRep_Tool::Triangulation(f,loc);if(tri.IsNull())continue;
