@@ -40,7 +40,7 @@ ldd build/lmcad  # prints: not a dynamic executable
 stat -c '%s bytes' build/lmcad
 ```
 
-The final AArch64 binary in this configuration is 26,758,520 bytes (25.5 MiB). Set `LMCAD_OCCT_PREFIX` when using a different install location.
+The final AArch64 binary in this configuration is 26,762,776 bytes (25.5 MiB). Set `LMCAD_OCCT_PREFIX` when using a different install location.
 
 `test.sh` prefers `lmscript` on PATH when it accepts schema v2 and compiles a while-loop probe to v5 bytecode. Otherwise it uses `scripts/lmscript-mono.sh`, a small adapter that imports the real `~/lmctl-mono/lmscript/dsl.ts` compiler directly; no compiler copy or environment variable is needed. The adapter compiles standalone `_dsl_` blocks only. Set `LMSCRIPT_BIN` to explicitly select a compiler.
 
