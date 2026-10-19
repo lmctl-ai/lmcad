@@ -15,10 +15,10 @@ The Python calculations used the installed build123d/OCP packages through `<work
 | Example | OCCT volume | build123d volume | Absolute difference |
 | --- | ---: | ---: | ---: |
 | plate with eight through-holes | 85.381416830866499 | 85.3814168308665 | < 1e-12 |
-| six-by-two hollow brick with fused studs | 2422.398837915021 | 2422.39883791502 | < 1e-12 |
+| pre-hollowed brick shell with bevelled fused studs | 2548.8618743534171 | — | not rechecked against build123d after the stud bevel change |
 | sampled-cubic-profile revolved vase with open top shell | 1708.2677036376435 | — | not rechecked against build123d after profile smoothing |
 
-The plate and brick are practical, simpler constructions than their more detailed reference models: the plate uses a regular eight-hole grid; the brick uses a single inward shell and studs rather than the reference's internal rib lattice. The current vase uses a sampled cubic profile. Its current C++ BRep volume is recorded above; the build123d comparison has not been rerun for that updated profile.
+The plate and brick are practical, simpler constructions than their more detailed reference models: the plate uses a regular eight-hole grid; the brick uses a single inward shell and studs rather than the reference's internal rib lattice. The brick shell is hollowed before the bevelled studs are fused so OCCT can build the offset reliably. Its tessellated STL measures 2548.682146, within 0.01% of the 2548.861874 BRep volume. The current vase uses a sampled cubic profile. The build123d comparisons have not been rerun for these updated geometries.
 
 The rendered outputs were inspected against `reference/out/b3d_01_holes`, `b3d_02_lego`, and `b3d_03_vase`: the plate has clean through-holes; the brick has a readable two-by-six stud grid; the vase has a visibly open mouth and smooth rotational sides. Their STL files contain the same deterministic tessellation used by those PNGs. Example output paths are `build/plate-with-holes.png/.stl`, `build/brick.png/.stl`, and `build/vase.png/.stl`.
 

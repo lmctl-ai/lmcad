@@ -2,7 +2,7 @@
 from collections import Counter
 from pathlib import Path
 import math,struct
-expected={'plate-with-holes':85.3814168308665,'brick':2422.39883791502,'vase':1708.2677036376435,
+expected={'plate-with-holes':85.3814168308665,'brick':2548.8618743534171,'vase':1708.2677036376435,
           'section-view':576.0,'mug':344.08933973285542}
 for name,exact in expected.items():
  data=Path('build',name+'.stl').read_bytes();count=struct.unpack_from('<I',data,80)[0]

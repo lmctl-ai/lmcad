@@ -2,19 +2,20 @@ out = ARGV.len() > 0 ? ARGV[0] : "build/brick.dslb";
 p = _dsl_ schema="../schema/lmcad.dsl.json";
 scene.background(0.16, 0.20, 0.27);
 let red = material().color(0.78, 0.13, 0.07).roughness(0.38).specular(0.22).shininess(28.0);
-let stud_red = material().color(1.0, 0.52, 0.36).roughness(0.28).specular(0.85).shininess(10.0);
 let brick = scene.box(48.0, 9.6, 16.0, red).name("brick");
+brick.hollow(1.2);
 for (ix in range(0, 6)) {
   for (iz in range(0, 2)) {
     let x = -20.0 + float(ix) * 8.0;
     let z = -4.0 + float(iz) * 8.0;
-    let stud = scene.cylinder(2.4, 1.8, stud_red).position(x, 5.7, z);
+    let stud_profile = scene.sketch();
+    stud_profile.point(0.0, 0.0).point(2.4, 0.0).point(2.4, 1.55).point(2.15, 1.8).point(0.0, 1.8).close();
+    let stud = scene.revolve_y(stud_profile, red).position(x, 4.8, z);
     brick.union(stud);
     stud.visible(false);
   }
 }
-brick.hollow(1.2);
-scene.assert_close(brick.volume(), 2422.39883791502, 0.000001);
+scene.assert_close(brick.volume(), 2548.8618743534171, 0.000001);
 scene.fit_camera(38.0, 1.2);
 scene.directional_light(-0.25, -1.0, -0.45, 1.0);
 scene.fill_light(0.8, -0.2, 0.9, 0.12);
