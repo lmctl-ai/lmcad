@@ -175,6 +175,17 @@
             ],
             "returns": "Scene"
           }
+        ],
+        "animation": [
+          {
+            "params": [
+              "string",
+              "int",
+              "int",
+              "int"
+            ],
+            "returns": "Animation"
+          }
         ]
       }
     },
@@ -493,6 +504,22 @@
           {
             "params": [],
             "returns": "Sketch"
+          }
+        ]
+      }
+    },
+    "Animation": {
+      "methods": {
+        "add_frame": [
+          {
+            "params": [],
+            "returns": "Animation"
+          }
+        ],
+        "finish": [
+          {
+            "params": [],
+            "returns": "void"
           }
         ]
       }
