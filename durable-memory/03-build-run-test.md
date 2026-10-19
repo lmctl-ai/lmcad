@@ -18,7 +18,7 @@ See the copyable commands in `README.md`. Examples: still-life PNG/PPM/OBJ, 12-f
 
 `./test.sh` passes **16 checks**: SDK pin, native build, four v5 compiles, embedded schema byte identity, host/compiler signature parity, four example executions, sequential multi-bytecode execution, PNG dimensions/pixels, 12-triangle STL, 30 distinct tween frames, PNG CRC/Adler, raster and animation determinism, removed-schema-option/bad-argument/camera refusals, host validation cases, three-keyframe boundary/endpoint checks, and relocated adapter parsing. The native unit checks cover CSV quoting/CRLF, complete finite numbers, missing/extra columns, and host row/record limits.
 
-The ASan+UBSan and fresh-clone results for the current revision are recorded after the resync verification run. The still-life PNG was visually inspected: the red box, blue sphere, and gold cylinder render against the configured dark background.
+The ASan+UBSan variant (`BUILD_DIR=build-sanitize ./test.sh`) passes all **16 checks**. A shallow fresh clone of pushed `60c6107` under `/tmp/lmcad-step8-8YS7cC` also builds and passes all **16 checks**, including rendering every example. The still-life PNG was visually inspected: the red box, blue sphere, and gold cylinder are visible against the configured dark background. The loop-row render shows the box row; tween frames 0, 14, and 29 show red, intermediate purple, and blue sphere positions/colors.
 
 ## Link checks
 
