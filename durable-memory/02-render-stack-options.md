@@ -4,7 +4,7 @@
 
 For milestone one, use a small project-owned triangle mesh layer and CPU software rasterizer, with a tiny self-contained PNG writer. Keep it in ordinary C++17 and the standard library. This is the shortest route to the acceptance path `lmscript -> .dslb -> embedded VM -> host scene -> PNG`, and it avoids introducing a platform graphics runtime or a large third-party build before the schema and host boundary are proven.
 
-This choice targets predictable headless output and a statically linked CLI. It is not a proposal to build a general CAD kernel. Implement a camera projection, depth buffer, flat or simple Lambert shading, and triangle rasterization first. Provide PPM as a trivially inspectable debug output; write PNG using a compact in-tree encoder that emits PNG chunks and zlib stored DEFLATE blocks. This avoids a runtime dependency on libpng or zlib. Benchmark and replace the encoder only if output size or render time becomes a demonstrated problem.
+This choice targets predictable headless output and a statically linked CLI. It is not a proposal to build a general CAD kernel. Implement a camera projection, depth buffer, flat or simple Lambert shading, and triangle rasterization first. Provide PPM as a trivially inspectable debug output; write PNG using a compact in-tree encoder. The original stored-DEFLATE implementation has since been replaced by deterministic LZ77/fixed-Huffman compression (with stored blocks for incompressible data). This avoids a runtime dependency on libpng or zlib. The size measurements and decoder checks are recorded in `03-build-run-test.md`.
 
 ## Options compared
 
