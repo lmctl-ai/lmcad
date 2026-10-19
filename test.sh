@@ -87,7 +87,7 @@ for frame in 0 18 35; do "$BUILD_DIR/lmcad-apng-extract" build/turntable.apng "$
 cmp -s "$WORK/turntable-0.png" "$WORK/turntable-18.png" && fail "turntable middle frame did not change"
 cmp -s "$WORK/turntable-18.png" "$WORK/turntable-35.png" && fail "turntable last frame did not change"
 ok "APNG extracted frames decode to PNG; tween and turntable frames differ"
-"$UNIT" "$WORK" "$BUILD_DIR" || fail "C++ unit checks"
+"$UNIT" "$WORK" build || fail "C++ unit checks"
 ok "PNG CRC/Adler, APNG chunk CRC/sequence/frame count, and raster determinism checks"
 
 python3 - "build" "$WORK/tween-before.sha256" <<'PY'
