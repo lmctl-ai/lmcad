@@ -1,5 +1,9 @@
 #include "render.hpp"
 #include "cad.hpp"
+#include "atomic-file.hpp"
+#include <filesystem>
+#include <csignal>
+#include <sys/resource.h>
 #include "keyframes.hpp"
 #include <cstdint>
 #include <cmath>
@@ -44,6 +48,19 @@ ApngInfo inspect_apng(const std::string& path){
 int main(int argc,char** argv){try{
  if(argc!=3)throw std::runtime_error("usage: lmcad-unit OUTPUT_DIR BUILD_DIR");
  std::string dir=argv[1],build=argv[2];
+ { const auto target=dir+"/atomic.png";
+   {std::ofstream f(target);f<<"previous";}
+   auto original=read(target);
+   {lmcad::AtomicFile output(target);output.write({1,2,3});}
+   check(read(target)==original,"abandoned write replaced destination");
+   struct rlimit oldLimit{};check(getrlimit(RLIMIT_FSIZE,&oldLimit)==0,"get file limit");
+   auto limit=oldLimit;limit.rlim_cur=16;auto oldSignal=signal(SIGXFSZ,SIG_IGN);
+   check(setrlimit(RLIMIT_FSIZE,&limit)==0,"set file limit");bool failed=false;
+   try{lmcad::AtomicFile output(target);output.write(std::vector<unsigned char>(1024,42));output.commit();}catch(const std::exception&){failed=true;}
+   setrlimit(RLIMIT_FSIZE,&oldLimit);signal(SIGXFSZ,oldSignal);
+   check(failed&&read(target)==original,"failed write destroyed destination");
+   for(const auto& entry:std::filesystem::directory_iterator(dir))check(entry.path().filename().string().rfind(".lmcad-",0)!=0,"failed output leaked temporary file");
+ }
  for(auto named_mesh:std::vector<std::pair<std::string,lmcad::Mesh>>{{"box",lmcad::cad::tessellate(lmcad::cad::box(2,2,2))},{"sphere",lmcad::cad::tessellate(lmcad::cad::sphere(1))},{"cylinder",lmcad::cad::tessellate(lmcad::cad::cylinder(1,2))}}) {
    lmcad::Shape shape;shape.mesh=named_mesh.second;
    for(auto scale:{lmcad::Vec3{1,1,1},lmcad::Vec3{-1,1,1},lmcad::Vec3{-1,-1,1}}) {
