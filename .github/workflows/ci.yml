@@ -28,8 +28,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # OCCT cold builds take ~16 minutes; let them finish so their prefix cache
-  # is saved instead of wasting that work when another main commit arrives.
+  # The measured cold builds took 21m on arm64 and 34m on x64; let them
+  # finish so their prefix cache is saved when another main commit arrives.
   cancel-in-progress: false
 
 defaults:
