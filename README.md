@@ -20,7 +20,7 @@ Requirements: C++17 compiler, CMake 3.24+, Ninja, and (to compile examples) an l
 ```sh
 scripts/sync-sdk.sh --verify
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-  -DLMCAD_OCCT_PREFIX=/home/ubuntu/poc/occt-prefix -DLMCAD_FULL_STATIC=ON
+  -DLMCAD_OCCT_PREFIX="$PWD/build/occt-prefix" -DLMCAD_FULL_STATIC=ON
 cmake --build build -j3
 file build/lmcad
 ldd build/lmcad  # prints: not a dynamic executable
@@ -29,7 +29,7 @@ stat -c '%s bytes' build/lmcad
 
 The final AArch64 binary in this configuration is 26,762,776 bytes (25.5 MiB). Set `LMCAD_OCCT_PREFIX` when using a different install location.
 
-`test.sh` prefers `lmscript` on PATH when it accepts schema v2 and compiles a while-loop probe to v5 bytecode. CI installs the published npm `@lmctl-ai/lmctl@0.2.347` compiler and uses this probe; otherwise it uses `scripts/lmscript-mono.sh`, a small adapter that imports the real `~/lmctl-mono/lmscript/dsl.ts` compiler directly. The adapter compiles standalone `_dsl_` blocks only. Set `LMSCRIPT_BIN` to explicitly select a compiler.
+`test.sh` prefers `lmscript` on PATH when it accepts schema v2 and compiles a while-loop probe to v5 bytecode. CI installs the published npm `@lmctl-ai/lmctl@0.2.347` compiler and uses this probe; otherwise it uses `scripts/lmscript-mono.sh`, a small adapter that imports the compiler sources from a local lmscript checkout (`LMSCRIPT_SOURCE`; maintainers only, the sources are not public). Strangers: `npm i -g @lmctl-ai/lmctl`. The adapter compiles standalone `_dsl_` blocks only. Set `LMSCRIPT_BIN` to explicitly select a compiler.
 
 ## CLI
 
@@ -79,7 +79,7 @@ build/lmcad --dsl build/turntable.dslb
 cmake -S . -B build-sanitize -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer -O1' \
   -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=address,undefined' \
-  -DLMCAD_OCCT_PREFIX=/home/ubuntu/poc/occt-prefix -DLMCAD_FULL_STATIC=OFF
+  -DLMCAD_OCCT_PREFIX="$PWD/build/occt-prefix" -DLMCAD_FULL_STATIC=OFF
 LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh
 ```
 

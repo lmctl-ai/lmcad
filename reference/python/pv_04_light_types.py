@@ -1,5 +1,5 @@
 # SOURCE: https://github.com/pyvista/pyvista/blob/e9ae86b16/examples/04-lights/light_types.py
-# LOCAL:  /home/ubuntu/poc/pyvista/examples/04-lights/light_types.py (checkout commit e9ae86b16)
+# LOCAL:  pyvista/examples/04-lights/light_types.py (checkout commit e9ae86b16)
 # LICENSE: MIT
 # Copied unmodified below this header for lmcad reference.
 """

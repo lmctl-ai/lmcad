@@ -1,5 +1,5 @@
 # SOURCE: https://github.com/gumyr/build123d/blob/092c40e3/examples/joints.py
-# LOCAL:  /home/ubuntu/poc/build123d/examples/joints.py (checkout commit 092c40e3)
+# LOCAL:  build123d/examples/joints.py (checkout commit 092c40e3)
 # LICENSE: Apache-2.0 (repo LICENSE; file has no header)
 # Copied unmodified below this header for lmcad reference.
 """

@@ -2,7 +2,7 @@
 
 This note inventories third-party material in the lmcad source and Linux
 release executable. It is an engineering inventory, not a legal conclusion.
-The operator has not selected lmcad's own license; do not add a repository
+The maintainers have not selected lmcad's own license; do not add a repository
 `LICENSE` until that decision is made.
 
 ## Statically linked Linux components

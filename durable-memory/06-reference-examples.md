@@ -21,9 +21,9 @@ on 2026-10-18.
 Re-run (from a scratch dir, never from inside the repos):
 
 ```sh
-R=~/poc/lmcad/reference; cd /tmp/scratch
-~/poc/venv/bin/python -I $R/runners/run_b3d.py $R/python/b3d_05_tea_cup.py $R/out/b3d_05_tea_cup b3d_05_tea_cup
-LMCAD_EXTRA_SITE=/tmp/lmcad_scratch/extra ~/poc/venv/bin/python -I $R/runners/run_pv.py $R/python/pv_06_marching_cubes.py $R/out/pv_06_marching_cubes pv_06_marching_cubes
+R=<workspace>/lmcad/reference; cd /tmp/scratch
+<workspace>/venv/bin/python -I $R/runners/run_b3d.py $R/python/b3d_05_tea_cup.py $R/out/b3d_05_tea_cup b3d_05_tea_cup
+LMCAD_EXTRA_SITE=/tmp/lmcad_scratch/extra <workspace>/venv/bin/python -I $R/runners/run_pv.py $R/python/pv_06_marching_cubes.py $R/out/pv_06_marching_cubes pv_06_marching_cubes
 ```
 
 ## Environment findings

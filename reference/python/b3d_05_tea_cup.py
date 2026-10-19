@@ -1,5 +1,5 @@
 # SOURCE: https://github.com/gumyr/build123d/blob/092c40e3/examples/tea_cup.py
-# LOCAL:  /home/ubuntu/poc/build123d/examples/tea_cup.py (checkout commit 092c40e3)
+# LOCAL:  build123d/examples/tea_cup.py (checkout commit 092c40e3)
 # LICENSE: Apache-2.0
 # Copied unmodified below this header for lmcad reference.
 """

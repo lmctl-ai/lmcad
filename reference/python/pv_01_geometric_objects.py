@@ -1,5 +1,5 @@
 # SOURCE: https://github.com/pyvista/pyvista/blob/e9ae86b16/examples/00-load/create_geometric_objects.py
-# LOCAL:  /home/ubuntu/poc/pyvista/examples/00-load/create_geometric_objects.py (checkout commit e9ae86b16)
+# LOCAL:  pyvista/examples/00-load/create_geometric_objects.py (checkout commit e9ae86b16)
 # LICENSE: MIT
 # Copied unmodified below this header for lmcad reference.
 """

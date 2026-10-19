@@ -54,7 +54,7 @@ The OCCT 8.0.1 STL writer toolkit is named `TKDESTL` (not `TKSTL`). Its direct d
 
 ## Reproduction
 
-All build outputs and the shallow OCCT checkout stayed in `/home/ubuntu/poc/occt-spike`, outside the repos. From that directory:
+All build outputs and the shallow OCCT checkout stayed in `<workspace>/occt-spike`, outside the repos. From that directory:
 
 ```sh
 git clone --depth 1 --branch V8_0_1 https://github.com/Open-Cascade-SAS/OCCT.git occt-src
@@ -71,7 +71,7 @@ nice -n 10 cmake -S occt-src -B build-geom -G Ninja \
 /usr/bin/time -v nice -n 10 cmake --build build-geom --parallel 3
 mkdir -p out-cpp
 nice -n 10 g++ -std=c++17 -O2 -Ibuild-geom/include/opencascade \
-  /home/ubuntu/poc/lmcad/spikes/occt/spike.cpp -static \
+  <workspace>/lmcad/spikes/occt/spike.cpp -static \
   -Wl,--start-group \
   build-geom/lin64/gcc/lib/libTKernel.a \
   build-geom/lin64/gcc/lib/libTKMath.a \
@@ -91,8 +91,8 @@ nice -n 10 g++ -std=c++17 -O2 -Ibuild-geom/include/opencascade \
 mkdir -p out-cpp
 ./spike out-cpp
 ldd spike
-/home/ubuntu/poc/venv/bin/python -I \
-  /home/ubuntu/poc/lmcad/spikes/occt/cross_build123d.py
+<workspace>/venv/bin/python -I \
+  <workspace>/lmcad/spikes/occt/cross_build123d.py
 ```
 
 The C++ and Python source files are in `spikes/occt/`. Configure-only exchange measurements used the same flags with `-DBUILD_ADDITIONAL_TOOLKITS=TKDESTL` and `TKDESTEP`, then `ninja -n`.

@@ -10,7 +10,7 @@ The base static closure from the spike is 14 OCCT archives. `TKOffset` is added 
 
 ## Build123d volume cross-check
 
-The Python calculations used the installed build123d/OCP packages through `/home/ubuntu/poc/venv/bin/python -I`; each one constructs the same dimensions and applies the same boolean/shell sequence as the `.lms` example. OCCT is queried by each script's `scene.assert_close(shape.volume(), expected, 1e-6)`. Results:
+The Python calculations used the installed build123d/OCP packages through `<workspace>/venv/bin/python -I`; each one constructs the same dimensions and applies the same boolean/shell sequence as the `.lms` example. OCCT is queried by each script's `scene.assert_close(shape.volume(), expected, 1e-6)`. Results:
 
 | Example | OCCT volume | build123d volume | Absolute difference |
 | --- | ---: | ---: | ---: |
