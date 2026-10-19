@@ -19,7 +19,7 @@ OCCT_SRC="$PWD/build/occt-src" OCCT_BUILD="$PWD/build/occt-build" \
 
 ## Build
 
-Requirements: C++17 compiler, CMake 3.24+, Ninja, and (to compile examples) an lmscript compiler with DSL v5/schema v2 support. CMake generates `schema_embedded.hpp` from the schema file; changing the schema triggers regeneration.
+Requirements: C++17 compiler, CMake 3.24+, Ninja, and (to compile examples) the published lmscript compiler, which requires Node.js >=24.15.0 and supports DSL v5/schema v2. CMake generates `schema_embedded.hpp` from the schema file; changing the schema triggers regeneration.
 
 ```sh
 scripts/sync-sdk.sh --verify
