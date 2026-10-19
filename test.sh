@@ -170,8 +170,13 @@ LMSCRIPT_BIN="$LMSCRIPT" LMCAD_HOST="$HOST" python3 tests/tween.py "$WORK"
 ok "multi-segment tween boundaries and endpoints"
 LMSCRIPT_BIN="$LMSCRIPT" LMCAD_HOST="$HOST" python3 tests/multi-file.py "$WORK"
 ok "shared scene, stop-on-failure, and upfront argument validation"
-python3 tests/compiler-selection.py "$WORK"
+LMCAD_REAL_COMPILER="$LMSCRIPT" python3 tests/compiler-selection.py "$WORK"
 ok "compiler selection verifies v5 output capability"
-python3 tests/adapter.py "$WORK"
-ok "relocated compiler adapter parsing"
+# The source adapter needs the (non-public) lmscript sources; skip without them.
+if [ -f "${LMSCRIPT_SOURCE:-$HOME/lmctl-mono/lmscript}/dsl.ts" ]; then
+  python3 tests/adapter.py "$WORK"
+  ok "relocated compiler adapter parsing"
+else
+  echo "skip - relocated compiler adapter parsing (no lmscript sources; set LMSCRIPT_SOURCE)"
+fi
 echo "PASS: $pass checks"

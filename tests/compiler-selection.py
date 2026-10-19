@@ -9,6 +9,9 @@ work = Path(sys.argv[1]) / 'compiler-selection'
 work.mkdir()
 fake = work / 'lmscript'
 adapter = root / 'scripts/lmscript-mono.sh'
+# The fake delegates real compilation to the compiler test.sh selected (the
+# npm lmscript for most people); the mono adapter needs private sources.
+real = os.environ.get('LMCAD_REAL_COMPILER') or str(adapter)
 fake.write_text('''#!/usr/bin/env python3
 import os,subprocess,sys
 from pathlib import Path
@@ -21,7 +24,7 @@ if sys.argv[1] != '--dsl-signatures':
  elif os.environ['TEST_MODE']=='missing': p.unlink()
 ''')
 fake.chmod(0o755)
-env = dict(os.environ, PATH=str(work)+os.pathsep+os.environ['PATH'], TEST_ADAPTER=str(adapter))
+env = dict(os.environ, PATH=str(work)+os.pathsep+os.environ['PATH'], TEST_ADAPTER=real)
 env.pop('LMSCRIPT_BIN', None)
 for mode in ['v4', 'missing', 'v5']:
  env['TEST_MODE'] = mode
