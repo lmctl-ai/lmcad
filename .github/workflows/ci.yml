@@ -3,17 +3,12 @@ name: ci
 on:
   workflow_dispatch:
     inputs:
-      all_platforms:
-        description: Enable the deferred macOS and Windows jobs (adds substantial build cost)
-        type: boolean
-        required: false
-        default: false
       only:
         description: Platform selection for manual runs
         type: choice
         required: false
-        default: linux
-        options: [linux, macos, windows, all]
+        default: all
+        options: [all, linux-x64, linux-arm64, macos-arm64, macos-x64, windows-x64]
   push:
     branches: [main]
     tags: ["v*"]
@@ -38,7 +33,7 @@ defaults:
 
 jobs:
   linux-x64:
-    if: github.event_name != 'workflow_dispatch' || inputs.only == 'linux' || inputs.only == 'all'
+    if: github.event_name != 'workflow_dispatch' || inputs.only == 'linux-x64' || inputs.only == 'all'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -107,7 +102,7 @@ jobs:
           if-no-files-found: error
 
   linux-arm64:
-    if: github.event_name != 'workflow_dispatch' || inputs.only == 'linux' || inputs.only == 'all'
+    if: github.event_name != 'workflow_dispatch' || inputs.only == 'linux-arm64' || inputs.only == 'all'
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -175,36 +170,230 @@ jobs:
           path: dist/
           if-no-files-found: error
 
-  # Deferred platform scaffolding. Default/manual Linux runs never schedule
-  # these jobs. macOS needs a static OCCT build using AppleClang and the same
-  # disabled Draw/Visualization/DataExchange/Tcl/Freetype/TBB options, but
-  # cannot use Linux's `-static`; CMake must stop adding `-static-libstdc++`
-  # for AppleClang and the release check must inspect `otool -L` instead.
-  macos:
-    if: github.event_name == 'workflow_dispatch' && inputs.all_platforms && (inputs.only == 'macos' || inputs.only == 'all')
+  # macOS: OCCT static archives with AppleClang; no `-static` exists on
+  # macOS, so the audit is otool -L (only system libs may remain).
+  macos-arm64:
+    if: github.event_name != 'workflow_dispatch' || inputs.only == 'macos-arm64' || inputs.only == 'all'
     runs-on: macos-15
+    env:
+      LMCAD_PLATFORM: macos-arm64
     steps:
-      - run: |
-          echo "Deferred: OCCT static archives are feasible; lmcad CMake link flags and system-library audit need an AppleClang port."
-          echo "Expected configure: BUILD_LIBRARY_TYPE=Static, LMCAD_FULL_STATIC=OFF, disable X11/OpenGL/Tcl/Freetype/TBB."
-          echo "No macOS binary is produced by this placeholder job."
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: toolchain and compiler key
+        id: toolchain
+        run: |
+          brew install ninja
+          echo "clang=$(clang++ -dumpversion)" >> "$GITHUB_OUTPUT"
+          clang++ --version | head -1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: install published lmscript compiler (DSL v5)
+        run: |
+          npm install --global @lmctl-ai/lmctl@0.2.347
+          scripts/select-compiler.sh | tee compiler.txt
+          grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
+      - name: restore static OCCT install prefix
+        id: occt-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/occt-prefix
+          key: occt-8.0.1-${{ env.LMCAD_PLATFORM }}-clang-${{ steps.toolchain.outputs.clang }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
+      - name: build and install OCCT 8.0.1 static (cold cache only)
+        id: build-occt
+        if: steps.occt-cache.outputs.cache-hit != 'true'
+        env:
+          OCCT_SRC: ${{ runner.temp }}/occt-src
+          OCCT_BUILD: ${{ runner.temp }}/occt-build
+          OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+        run: scripts/build-occt.sh
+      - name: save completed OCCT prefix even if later checks fail
+        if: always() && steps.occt-cache.outputs.cache-hit != 'true' && steps.build-occt.outcome == 'success'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/occt-prefix
+          key: occt-8.0.1-${{ env.LMCAD_PLATFORM }}-clang-${{ steps.toolchain.outputs.clang }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
+      - name: sync and verify vendored SDK
+        run: scripts/sync-sdk.sh --verify
+      - name: build and run tests
+        env:
+          LMCAD_OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+          LMCAD_FULL_STATIC: OFF
+        run: ./test.sh
+      - name: assert only system libraries remain
+        run: |
+          otool -L build/lmcad | tee binary-otool.txt
+          tail -n +2 binary-otool.txt | awk '{print $1}' | grep -v '^/usr/lib/\|^/System/Library/' > non-system-libs.txt || true
+          [ ! -s non-system-libs.txt ] || { cat non-system-libs.txt; exit 1; }
+      - name: stage release binary
+        env:
+          OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+        run: |
+          mkdir -p dist
+          cp build/lmcad "dist/lmcad-$LMCAD_PLATFORM"
+          scripts/stage-release-notices.sh dist "$OCCT_PREFIX" darwin
+          wc -c < "dist/lmcad-$LMCAD_PLATFORM"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lmcad-${{ env.LMCAD_PLATFORM }}
+          path: dist/
+          if-no-files-found: error
 
-  # MinGW-w64 is the preferred first Windows route because this project uses
-  # GNU CMake/link flags; MSVC requires a separate port of --start-group and
-  # POSIX file APIs. OCCT must be built static with USE_TBB/TK/FreeType off;
-  # verify archive naming and path handling before enabling a real build.
-  windows:
-    if: github.event_name == 'workflow_dispatch' && inputs.all_platforms && (inputs.only == 'windows' || inputs.only == 'all')
+  macos-x64:
+    if: github.event_name != 'workflow_dispatch' || inputs.only == 'macos-x64' || inputs.only == 'all'
+    runs-on: macos-15-intel
+    env:
+      LMCAD_PLATFORM: macos-x64
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: toolchain and compiler key
+        id: toolchain
+        run: |
+          brew install ninja
+          echo "clang=$(clang++ -dumpversion)" >> "$GITHUB_OUTPUT"
+          clang++ --version | head -1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: install published lmscript compiler (DSL v5)
+        run: |
+          npm install --global @lmctl-ai/lmctl@0.2.347
+          scripts/select-compiler.sh | tee compiler.txt
+          grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
+      - name: restore static OCCT install prefix
+        id: occt-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/occt-prefix
+          key: occt-8.0.1-${{ env.LMCAD_PLATFORM }}-clang-${{ steps.toolchain.outputs.clang }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
+      - name: build and install OCCT 8.0.1 static (cold cache only)
+        id: build-occt
+        if: steps.occt-cache.outputs.cache-hit != 'true'
+        env:
+          OCCT_SRC: ${{ runner.temp }}/occt-src
+          OCCT_BUILD: ${{ runner.temp }}/occt-build
+          OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+        run: scripts/build-occt.sh
+      - name: save completed OCCT prefix even if later checks fail
+        if: always() && steps.occt-cache.outputs.cache-hit != 'true' && steps.build-occt.outcome == 'success'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/occt-prefix
+          key: occt-8.0.1-${{ env.LMCAD_PLATFORM }}-clang-${{ steps.toolchain.outputs.clang }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
+      - name: sync and verify vendored SDK
+        run: scripts/sync-sdk.sh --verify
+      - name: build and run tests
+        env:
+          LMCAD_OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+          LMCAD_FULL_STATIC: OFF
+        run: ./test.sh
+      - name: assert only system libraries remain
+        run: |
+          otool -L build/lmcad | tee binary-otool.txt
+          tail -n +2 binary-otool.txt | awk '{print $1}' | grep -v '^/usr/lib/\|^/System/Library/' > non-system-libs.txt || true
+          [ ! -s non-system-libs.txt ] || { cat non-system-libs.txt; exit 1; }
+      - name: stage release binary
+        env:
+          OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+        run: |
+          mkdir -p dist
+          cp build/lmcad "dist/lmcad-$LMCAD_PLATFORM"
+          scripts/stage-release-notices.sh dist "$OCCT_PREFIX" darwin
+          wc -c < "dist/lmcad-$LMCAD_PLATFORM"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lmcad-${{ env.LMCAD_PLATFORM }}
+          path: dist/
+          if-no-files-found: error
+
+  # Windows: MinGW-w64 + GNU ld (--start-group works); -static yields a
+  # standalone .exe. POSIX-only checks are skipped in test.sh (documented).
+  windows-x64:
+    if: github.event_name != 'workflow_dispatch' || inputs.only == 'windows-x64' || inputs.only == 'all'
     runs-on: windows-2022
     steps:
-      - run: |
-          echo "Deferred: install MinGW-w64 + Ninja, build OCCT static with USE_TBB/TK/FreeType off, and port lmcad POSIX file APIs."
-          echo "MSVC is not currently compatible with this project's GNU linker group flags."
-          echo "No Windows binary is produced by this placeholder job."
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: toolchain and compiler key
+        id: toolchain
+        run: |
+          if ! command -v g++ >/dev/null 2>&1 || ! command -v ninja >/dev/null 2>&1; then
+            for i in 1 2 3; do
+              choco install -y mingw ninja && break
+              echo "choco attempt $i failed; retrying"; sleep 20
+            done
+          fi
+          command -v g++ >/dev/null 2>&1 || { echo "no mingw g++ on PATH"; exit 1; }
+          echo "gcc=$(g++ -dumpfullversion -dumpversion)" >> "$GITHUB_OUTPUT"
+          g++ --version | head -1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: install published lmscript compiler (DSL v5)
+        run: |
+          npm install --global @lmctl-ai/lmctl@0.2.347
+          scripts/select-compiler.sh | tee compiler.txt
+          grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
+      - name: python3 shim (git-bash has none)
+        run: |
+          mkdir -p .ci-bin
+          printf '#!/usr/bin/env bash\nexec python "$@"\n' > .ci-bin/python3
+          chmod +x .ci-bin/python3
+          echo "$PWD/.ci-bin" >> "$GITHUB_PATH"
+      - name: restore static OCCT install prefix
+        id: occt-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/occt-prefix
+          key: occt-8.0.1-windows-x64-mingw-gcc-${{ steps.toolchain.outputs.gcc }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
+      - name: build and install OCCT 8.0.1 static (cold cache only)
+        id: build-occt
+        if: steps.occt-cache.outputs.cache-hit != 'true'
+        env:
+          OCCT_SRC: ${{ runner.temp }}/occt-src
+          OCCT_BUILD: ${{ runner.temp }}/occt-build
+          OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+        run: scripts/build-occt.sh
+      - name: save completed OCCT prefix even if later checks fail
+        if: always() && steps.occt-cache.outputs.cache-hit != 'true' && steps.build-occt.outcome == 'success'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/occt-prefix
+          key: occt-8.0.1-windows-x64-mingw-gcc-${{ steps.toolchain.outputs.gcc }}-${{ hashFiles('.github/occt-cmake-flags.txt') }}
+      - name: sync and verify vendored SDK
+        run: scripts/sync-sdk.sh --verify
+      - name: build and run tests
+        env:
+          LMCAD_OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+          LMCAD_FULL_STATIC: ON
+        run: ./test.sh
+      - name: assert standalone executable
+        run: |
+          objdump -p build/lmcad.exe | grep 'DLL Name' | tee binary-dlls.txt
+          grep -iE 'libstdc|libgcc|winpthread' binary-dlls.txt && exit 1
+          true
+      - name: stage release binary
+        env:
+          OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
+        run: |
+          mkdir -p dist
+          cp build/lmcad.exe dist/lmcad-windows-x64.exe
+          scripts/stage-release-notices.sh dist "$OCCT_PREFIX" mingw
+          wc -c < dist/lmcad-windows-x64.exe
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lmcad-windows-x64
+          path: dist/
+          if-no-files-found: error
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux-x64, linux-arm64]
+    needs: [linux-x64, linux-arm64, macos-arm64, macos-x64, windows-x64]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -214,7 +403,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          pattern: lmcad-linux-*
+          pattern: lmcad-*
           path: dist
           merge-multiple: true
       - name: attach third-party notices and private npm layout
