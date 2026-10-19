@@ -49,6 +49,8 @@ int main(int argc,char** argv){try{
      check(depth>fit.near_clip&&depth<fit.far_clip&&std::abs(lmcad::dot(delta,right))<half*aspect&&std::abs(lmcad::dot(delta,up))<half,"fitted camera clips bounds");
    }
  }
+ auto tiny_fit=lmcad::fitted_camera({},1e-4,45,1.1);
+ check(lmcad::length(tiny_fit.eye)<0.001&&tiny_fit.near_clip<1e-4,"tiny fitted geometry kept a fixed distance floor");
  bool fit_overflow=false;try{lmcad::fitted_camera({},100,45,std::numeric_limits<double>::max());}catch(const std::exception&){fit_overflow=true;}
  check(fit_overflow,"camera fit overflow accepted");
  lmcad::Camera resolve_camera;resolve_camera.eye={0,0,0};resolve_camera.target={0,0,-1};resolve_camera.fov_degrees=90;

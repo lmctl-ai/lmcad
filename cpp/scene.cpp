@@ -11,7 +11,7 @@ Camera fitted_camera(Vec3 center,double radius,double fov,double margin,double a
     throw std::runtime_error("invalid camera fit parameters");
   const double vertical=fov*std::acos(-1.0)/360.0;
   const double half=std::min(vertical,std::atan(std::tan(vertical)*aspect));
-  const double distance=std::max(1.0,radius/std::sin(half)*margin);
+  const double distance=radius/std::sin(half)*margin;
   Camera c;c.fov_degrees=fov;c.target=center;c.eye=center+normalized({1.4,1.1,1.7})*distance;
   c.near_clip=std::min(.01,(distance-radius)*.5);c.far_clip=distance+radius*4;
   if(!std::isfinite(c.eye.x)||!std::isfinite(c.eye.y)||!std::isfinite(c.eye.z)||

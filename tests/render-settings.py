@@ -47,3 +47,9 @@ assert not any(rows[0]+rows[-1]) and all(not any(row[:3]+row[-3:]) for row in ro
 print('camera fit handles portrait aspect, margin, and invalid inputs')
 
 assert render('ambient-clamped','scene.ambient(2.0);')==render('ambient-one','scene.ambient(1.0);'),'ambient above one must clamp to full illumination'
+
+tiny=work/'tiny-fit.ppm'
+run('tiny-fit',f'scene.background(0.0,0.0,0.0);scene.box(0.001,0.001,0.001,material());scene.fit_camera(45.0,1.1);scene.render_ppm({json.dumps(str(tiny))},31,31);')
+pixels=tiny.read_bytes().split(b'\n',3)[3]
+assert sum(x!=0 for x in pixels)>300,'tiny fitted geometry is invisible or subpixel-sized'
+print('tiny geometry retains usable fitted framing')
