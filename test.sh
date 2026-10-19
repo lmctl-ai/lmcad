@@ -205,6 +205,9 @@ else
 fi
 
 # npm layout smoke: fake binaries, real notice files.
+# GNU tar reads "D:" as a remote host; BSD tar rejects --force-local.
+TAR_LOCAL=""
+[ -n "$EXE" ] && TAR_LOCAL="--force-local"
 NPMART="$WORK/npm-art"; mkdir -p "$NPMART"
 cp LICENSE "$NPMART/"; cp THIRD_PARTY_NOTICES.md "$NPMART/THIRD_PARTY_NOTICES"
 cp licenses/*.txt "$NPMART/"; cp licenses/LINUX-RELINKING.md "$NPMART/OCCT-RELINKING.md"
@@ -212,7 +215,7 @@ cp .github/occt-cmake-flags.txt "$NPMART/"; cp scripts/build-occt.sh "$NPMART/"
 printf 'x' > "$NPMART/OCCT-LICENSE_LGPL_21.txt"; printf 'x' > "$NPMART/OCCT-LGPL-EXCEPTION.txt"
 printf 'x' > "$NPMART/GCC-TOOLCHAIN-COPYRIGHT"; printf 'x' > "$NPMART/GLIBC-COPYRIGHT"
 for p in linux-x64 linux-arm64 macos-x64 macos-arm64 windows-x64; do printf 'x' > "$NPMART/lmcad-$p"; done
-for p in linux-x64 linux-arm64; do tar --force-local -czf "$NPMART/lmcad-$p-relink-objects.tar.gz" -C "$NPMART" LICENSE; done
+for p in linux-x64 linux-arm64; do tar ${TAR_LOCAL:+$TAR_LOCAL} -czf "$NPMART/lmcad-$p-relink-objects.tar.gz" -C "$NPMART" LICENSE; done
 scripts/npm-layout.sh "$NPMART" "$WORK/npm-out" 1.2.3 >/dev/null || fail "npm layout"
 python3 - "$WORK/npm-out" <<'PY'
 import json,os,sys
