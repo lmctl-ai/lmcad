@@ -57,6 +57,10 @@ if(WIN32)
   # MinGW's <cmath> hides M_PI & friends behind this MSVC-compat macro.
   target_compile_definitions(lmcad PRIVATE _USE_MATH_DEFINES)
   target_compile_definitions(lmcad-unit PRIVATE _USE_MATH_DEFINES)
+  # Windows gives 1 MiB of stack where Linux gives 8; OCCT's failure paths
+  # (e.g. a refused fillet) run deep enough to overflow it.
+  target_link_options(lmcad PRIVATE -Wl,--stack,33554432)
+  target_link_options(lmcad-unit PRIVATE -Wl,--stack,33554432)
 endif()
 target_link_libraries(lmcad-unit PRIVATE ${LMCAD_LINK_GROUP} ${LMCAD_SYS_LIBS})
 add_executable(lmcad-apng-extract tools/apng-extract.cpp cpp/atomic-file.cpp)
