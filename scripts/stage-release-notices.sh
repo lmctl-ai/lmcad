@@ -41,7 +41,7 @@ if [[ "$PLATFORM" == linux ]]; then
   [[ -d "$build_objects" ]] || { echo "missing application objects: $build_objects" >&2; exit 1; }
   objects=()
   while IFS= read -r -d '' object; do objects+=("$object"); done < <(find "$build_objects" -maxdepth 1 -type f -name '*.o' -print0 | sort -z)
-  ((${#objects[@]} == 6)) || { echo "expected 6 lmcad link objects; found ${#objects[@]}" >&2; exit 1; }
+  ((${#objects[@]} == 7)) || { echo "expected 7 lmcad link objects; found ${#objects[@]}" >&2; exit 1; }
   relative_objects=()
   for object in "${objects[@]}"; do relative_objects+=("${object#"$BUILD_DIR"/}"); done
   archive="$DIST/$(basename "$binary")-relink-objects.tar.gz"
