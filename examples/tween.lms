@@ -9,7 +9,9 @@ let frames_per_segment = 30;
 for (segment in range(0, keys.len() - 1)) {
   let a = keys.at(segment);
   let b = keys.at(segment + 1);
-  for (step in range(0, frames_per_segment)) {
+  let first_step = 0;
+  if (segment > 0) { first_step = 1; }
+  for (step in range(first_step, frames_per_segment)) {
     let t = float(step) / float(frames_per_segment - 1);
     let e = ease(t);
     let x = lerp(a.x(), b.x(), e);
@@ -19,7 +21,7 @@ for (segment in range(0, keys.len() - 1)) {
     let g = lerp(a.g(), b.g(), e);
     let blue = lerp(a.b(), b.b(), e);
     shape.position(x, y, z).color(r, g, blue);
-    let frame_index = segment * frames_per_segment + step;
+    let frame_index = segment * (frames_per_segment - 1) + step;
     scene.render_png("build/tween-" + str(frame_index) + ".png", 160, 120);
   }
 }

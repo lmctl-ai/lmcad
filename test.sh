@@ -39,7 +39,7 @@ while pos<len(b):
 raw=zlib.decompress(b''.join(d for t,d in chunks if t==b'IDAT')); stride=w*3+1
 center=raw[(h//2)*stride+1+3*(w//2):(h//2)*stride+4+3*(w//2)]; assert center != bytes((20,26,41)),center
 frames=sorted(bdir.glob('tween-*.png')); assert len(frames)==30,len(frames)
-hashes=[hashlib.sha256(p.read_bytes()).digest() for p in frames]; assert len(set(hashes))>1
+hashes=[hashlib.sha256(p.read_bytes()).digest() for p in frames]; assert len(set(hashes))==30
 assert (bdir/'loop-row.png').stat().st_size>1000
 print(f'PNG 640x480, PPM/OBJ records valid, STL triangles=12, loop PNG bytes={(bdir/"loop-row.png").stat().st_size}, tween frames={len(frames)}, unique={len(set(hashes))}')
 PY
@@ -76,4 +76,6 @@ set +e; out="$("$HOST" --dsl "$WORK/no-camera.dslb" --schema schema/lmcad.dsl.js
 ok "camera required validation (exit 3)"
 LMSCRIPT_BIN="$LMSCRIPT" LMCAD_HOST="$HOST" python3 tests/refusals.py "$WORK"
 ok "compiled host validation refusals"
+LMSCRIPT_BIN="$LMSCRIPT" LMCAD_HOST="$HOST" python3 tests/tween.py "$WORK"
+ok "multi-segment tween boundaries and endpoints"
 echo "PASS: $pass checks"
