@@ -1,0 +1,23 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/brick.dslb";
+p = _dsl_ schema="../schema/lmcad.dsl.json";
+scene.background(0.10, 0.13, 0.18);
+let red = material().color(0.82, 0.12, 0.09).roughness(0.42);
+let brick = scene.box(48.0, 9.6, 16.0, red).name("brick");
+for (ix in range(0, 6)) {
+  for (iz in range(0, 2)) {
+    let x = -20.0 + float(ix) * 8.0;
+    let z = -4.0 + float(iz) * 8.0;
+    let stud = scene.cylinder(2.4, 1.8, red).position(x, 5.7, z);
+    brick.union(stud);
+    stud.visible(false);
+  }
+}
+brick.hollow(1.2);
+scene.assert_close(brick.volume(), 2422.39883791502, 0.000001);
+scene.fit_camera(38.0);
+scene.directional_light(-0.5, -1.0, -0.6, 1.0);
+scene.render_png("build/brick.png", 720, 540);
+scene.export_stl("build/brick.stl");
+end _dsl_
+savedsl(p, out);
+println(f"wrote {out}");

@@ -7,7 +7,7 @@
 
 namespace lmcad {
 namespace {
-struct ScreenVertex { long double x,y,z; };
+struct ScreenVertex { long double x,y,z; Vec3 normal; };
 template<class Plane> std::vector<ScreenVertex> clip(const std::vector<ScreenVertex>& input,Plane plane) {
   std::vector<ScreenVertex> output;
   if(input.empty())return output;
@@ -15,7 +15,7 @@ template<class Plane> std::vector<ScreenVertex> clip(const std::vector<ScreenVer
   for(auto b:input){auto db=plane(b);
     if((da>=0)!=(db>=0)){
       auto t=da/(da-db);
-      output.push_back({a.x*(1-t)+b.x*t,a.y*(1-t)+b.y*t,a.z*(1-t)+b.z*t});
+      output.push_back({a.x*(1-t)+b.x*t,a.y*(1-t)+b.y*t,a.z*(1-t)+b.z*t,a.normal*(1-t)+b.normal*t});
     }
     if(db>=0)output.push_back(b);
     a=b;da=db;
@@ -35,9 +35,12 @@ Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& 
     auto triangle=transform_triangle(shape,local);
     Vec3 p[3]={triangle.a,triangle.b,triangle.c};
     std::vector<ScreenVertex> polygon;
-    for(auto point:p){
+    Vec3 face_normal;try{face_normal=normalized(cross(p[1]-p[0],p[2]-p[0]));}catch(...){continue;}
+    Vec3 normals[3]={face_normal,face_normal,face_normal};
+    if(local.smooth)try{normals[0]=transform_normal(shape,local.na);normals[1]=transform_normal(shape,local.nb);normals[2]=transform_normal(shape,local.nc);}catch(...){normals[0]=normals[1]=normals[2]=face_normal;}
+    for(int pi=0;pi<3;pi++){auto point=p[pi];
       long double x=static_cast<long double>(point.x)-camera.eye.x,y=static_cast<long double>(point.y)-camera.eye.y,z=static_cast<long double>(point.z)-camera.eye.z;
-      polygon.push_back({x*right.x+y*right.y+z*right.z,x*up.x+y*up.y+z*up.z,x*forward.x+y*forward.y+z*forward.z});
+      polygon.push_back({x*right.x+y*right.y+z*right.z,x*up.x+y*up.y+z*up.z,x*forward.x+y*forward.y+z*forward.z,normals[pi]});
     }
     polygon=clip(polygon,[&](auto v){return v.z-camera.near_clip;});
     polygon=clip(polygon,[&](auto v){return camera.far_clip-v.z;});
@@ -46,9 +49,6 @@ Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& 
     polygon=clip(polygon,[&](auto v){return v.z*(h*.5L/focal)+v.y;});
     polygon=clip(polygon,[&](auto v){return v.z*(h*.5L/focal)-v.y;});
     if(polygon.size()<3)continue;
-    Vec3 n; try{n=normalized(cross(normalized(p[1]-p[0]),normalized(p[2]-p[0])));}catch(...){continue;}
-    double diffuse=std::max(0.0,dot(n,tolight))*light.intensity; double shade=.18+.82*std::min(1.0,diffuse);
-    unsigned char color[3]={channel(shape.material.color.r*shade),channel(shape.material.color.g*shade),channel(shape.material.color.b*shade)};
     for(size_t fan=1;fan+1<polygon.size();fan++) {
       ScreenVertex v[3]={polygon[0],polygon[fan],polygon[fan+1]};
       for(auto& q:v){q.x=std::clamp(w*.5L+q.x*focal/q.z,0.0L,static_cast<long double>(w));q.y=std::clamp(h*.5L-q.y*focal/q.z,0.0L,static_cast<long double>(h));}
@@ -60,7 +60,10 @@ Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& 
       long double b=((v[2].x-px)*(v[0].y-py)-(v[2].y-py)*(v[0].x-px))/area; long double c=1-a-b;
       if(a < -1e-9||b < -1e-9||c < -1e-9)continue;
       double zz=1.0/(a/v[0].z+b/v[1].z+c/v[2].z); size_t at=static_cast<size_t>(y)*w+x; if(zz>=depth[at])continue; depth[at]=zz;
-      im.rgb[3*at]=color[0];im.rgb[3*at+1]=color[1];im.rgb[3*at+2]=color[2];
+      long double wa=a/v[0].z,wb=b/v[1].z,wc=c/v[2].z,sum=wa+wb+wc;Vec3 normal;
+      try{normal=normalized((v[0].normal*static_cast<double>(wa)+v[1].normal*static_cast<double>(wb)+v[2].normal*static_cast<double>(wc))/static_cast<double>(sum));}catch(...){normal=face_normal;}
+      double diffuse=std::max(0.0,dot(normal,tolight))*light.intensity;double shade=.24+.76*std::min(1.0,diffuse);
+      im.rgb[3*at]=channel(shape.material.color.r*shade);im.rgb[3*at+1]=channel(shape.material.color.g*shade);im.rgb[3*at+2]=channel(shape.material.color.b*shade);
     }
     }
   }

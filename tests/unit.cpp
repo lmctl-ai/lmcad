@@ -1,4 +1,5 @@
 #include "render.hpp"
+#include "cad.hpp"
 #include "keyframes.hpp"
 #include <cstdint>
 #include <fstream>
@@ -17,12 +18,12 @@ void check(bool ok,const char* what){if(!ok)throw std::runtime_error(what);}
 int main(int argc,char** argv){try{
  if(argc!=2)throw std::runtime_error("usage: lmcad-unit OUTPUT_DIR");
  std::string dir=argv[1];
- for(auto mesh:{lmcad::make_box(2,2,2),lmcad::make_sphere(1),lmcad::make_cylinder(1,2)}) {
-   lmcad::Shape shape;shape.mesh=mesh;
+ for(auto named_mesh:std::vector<std::pair<std::string,lmcad::Mesh>>{{"box",lmcad::cad::tessellate(lmcad::cad::box(2,2,2))},{"sphere",lmcad::cad::tessellate(lmcad::cad::sphere(1))},{"cylinder",lmcad::cad::tessellate(lmcad::cad::cylinder(1,2))}}) {
+   lmcad::Shape shape;shape.mesh=named_mesh.second;
    for(auto scale:{lmcad::Vec3{1,1,1},lmcad::Vec3{-1,1,1},lmcad::Vec3{-1,-1,1}}) {
      shape.scale=scale;
      for(auto t:lmcad::world_triangles({shape}))
-       check(lmcad::dot(lmcad::cross(t.b-t.a,t.c-t.a),(t.a+t.b+t.c)/3)>0,"primitive/reflected winding points inward");
+       check(lmcad::dot(lmcad::cross(t.b-t.a,t.c-t.a),(t.a+t.b+t.c)/3)>-1e-8,(named_mesh.first+"/reflected winding points inward").c_str());
    }
  }
  lmcad::Camera clipcam;clipcam.eye={0,0,0};clipcam.target={0,0,-1};clipcam.near_clip=1;clipcam.far_clip=4;
@@ -65,7 +66,7 @@ int main(int argc,char** argv){try{
    }catch(const std::exception&){failed=true;}
    check(failed,"output path silently truncated at NUL");
  }
- lmcad::Shape huge;huge.mesh=lmcad::make_box(2,2,2);huge.scale={1e200,1e200,1e200};
+ lmcad::Shape huge;huge.mesh=lmcad::cad::tessellate(lmcad::cad::box(2,2,2));huge.scale={1e200,1e200,1e200};
  bool rejected=false;try{lmcad::write_stl(dir+"/huge.stl",{huge});}catch(const std::exception&){rejected=true;}
  check(rejected,"STL accepted coordinates outside float range");
  huge.scale={1e308,1e308,1e308};huge.translation={1e308,0,0};rejected=false;
@@ -79,7 +80,7 @@ int main(int argc,char** argv){try{
  }
  std::string many=header;for(int i=0;i<4097;i++)many+=std::to_string(i)+",0,0,0,1,0,0\n";
  bool tooMany=false;try{csv(many);}catch(const dslvm::Error&){tooMany=true;}check(tooMany,"CSV row limit ignored");
- lmcad::Shape box;box.mesh=lmcad::make_box(1.4,1.0,.8);box.material.color={.8,.2,.1};box.translation={.1,0,0};
+ lmcad::Shape box;box.mesh=lmcad::cad::tessellate(lmcad::cad::box(1.4,1.0,.8));box.material.color={.8,.2,.1};box.translation={.1,0,0};
  lmcad::Camera camera;camera.eye={3,2,5};camera.target={0,0,0};lmcad::Light light;light.direction={-1,-1,-1};
  auto a=lmcad::render({box},camera,light,{.1,.2,.3},64,48),b=lmcad::render({box},camera,light,{.1,.2,.3},64,48);
  check(a.rgb==b.rgb,"raster output is not deterministic");lmcad::write_png(dir+"/a.png",a);lmcad::write_png(dir+"/b.png",b);

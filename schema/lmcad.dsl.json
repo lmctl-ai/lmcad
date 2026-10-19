@@ -104,6 +104,49 @@
             ],
             "returns": "void"
           }
+        ],
+        "sketch": [
+          {
+            "params": [],
+            "returns": "Sketch"
+          }
+        ],
+        "extrude": [
+          {
+            "params": [
+              "Sketch",
+              "float",
+              "Material"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "revolve_y": [
+          {
+            "params": [
+              "Sketch",
+              "Material"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "fit_camera": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Camera"
+          }
+        ],
+        "assert_close": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "void"
+          }
         ]
       }
     },
@@ -173,6 +216,112 @@
               "float"
             ],
             "returns": "Shape"
+          }
+        ],
+        "union": [
+          {
+            "params": [
+              "Shape"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "cut": [
+          {
+            "params": [
+              "Shape"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "intersect": [
+          {
+            "params": [
+              "Shape"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "fillet": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "chamfer": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "hollow": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "hollow_top": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "mirror": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Shape"
+          }
+        ],
+        "volume": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "min_x": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "min_y": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "min_z": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "max_x": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "max_y": [
+          {
+            "params": [],
+            "returns": "float"
+          }
+        ],
+        "max_z": [
+          {
+            "params": [],
+            "returns": "float"
           }
         ]
       }
@@ -297,6 +446,25 @@
           {
             "params": [],
             "returns": "float"
+          }
+        ]
+      }
+    },
+    "Sketch": {
+      "methods": {
+        "point": [
+          {
+            "params": [
+              "float",
+              "float"
+            ],
+            "returns": "Sketch"
+          }
+        ],
+        "close": [
+          {
+            "params": [],
+            "returns": "Sketch"
           }
         ]
       }

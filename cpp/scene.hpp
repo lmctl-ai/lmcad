@@ -17,7 +17,7 @@ double length(Vec3 a);
 Vec3 normalized(Vec3 a);
 
 struct Color { double r=.72, g=.74, b=.78; };
-struct Triangle { Vec3 a,b,c; };
+struct Triangle { Vec3 a,b,c; Vec3 na{},nb{},nc{}; bool smooth=false; };
 struct Mesh { std::vector<Triangle> triangles; };
 struct Material { Color color; double roughness=.7; };
 struct Shape {
@@ -41,10 +41,8 @@ struct Image {
   std::vector<unsigned char> rgb;
 };
 
-Mesh make_box(double x, double y, double z);
-Mesh make_sphere(double radius, int segments=20, int rings=12);
-Mesh make_cylinder(double radius, double height, int segments=24);
 Triangle transform_triangle(const Shape& shape, const Triangle& triangle);
 Vec3 transform_point(const Shape& shape, Vec3 point);
+Vec3 transform_normal(const Shape& shape, Vec3 normal);
 std::vector<Triangle> world_triangles(const std::vector<Shape>& shapes);
 }

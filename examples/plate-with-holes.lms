@@ -1,0 +1,22 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/plate-with-holes.dslb";
+p = _dsl_ schema="../schema/lmcad.dsl.json";
+scene.background(0.10, 0.13, 0.18);
+let alloy = material().color(0.72, 0.78, 0.84).roughness(0.55);
+let plate = scene.box(12.0, 1.0, 8.0, alloy).name("mounting plate");
+for (ix in range(0, 4)) {
+  for (iz in range(0, 2)) {
+    let x = -4.5 + float(ix) * 3.0;
+    let z = -2.0 + float(iz) * 4.0;
+    let tool = scene.cylinder(0.65, 2.0, alloy).position(x, 0.0, z);
+    plate.cut(tool);
+    tool.visible(false);
+  }
+}
+scene.assert_close(plate.volume(), 85.3814168308665, 0.000001);
+scene.fit_camera(40.0);
+scene.directional_light(-0.6, -1.0, -0.7, 1.0);
+scene.render_png("build/plate-with-holes.png", 720, 540);
+scene.export_stl("build/plate-with-holes.stl");
+end _dsl_
+savedsl(p, out);
+println(f"wrote {out}");
