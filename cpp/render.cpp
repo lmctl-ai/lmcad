@@ -81,9 +81,13 @@ Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& 
   Image hi=render_native(shapes,view,light,bg,static_cast<int>(sw),static_cast<int>(sh));
   Image out;out.width=w;out.height=h;out.rgb.resize(static_cast<size_t>(w)*h*3);
   const unsigned divisor=samples*samples;
+  // RGB bytes are display-encoded sRGB. Resolve coverage in linear light,
+  // then encode once; averaging bytes would darken high-contrast silhouettes.
+  static const auto linear=[](){std::array<double,256> values{};for(size_t i=0;i<values.size();++i){double s=double(i)/255;values[i]=s<=0.04045?s/12.92:std::pow((s+0.055)/1.055,2.4);}return values;}();
   for(int y=0;y<h;y++)for(int x=0;x<w;x++)for(int c=0;c<3;c++){
-    unsigned sum=0;for(int dy=0;dy<samples;dy++)for(int dx=0;dx<samples;dx++)sum+=hi.rgb[(static_cast<size_t>(y*samples+dy)*hi.width+(x*samples+dx))*3+c];
-    out.rgb[(static_cast<size_t>(y)*w+x)*3+c]=static_cast<unsigned char>((sum+divisor/2)/divisor);
+    double sum=0;for(int dy=0;dy<samples;dy++)for(int dx=0;dx<samples;dx++)sum+=linear[hi.rgb[(static_cast<size_t>(y*samples+dy)*hi.width+(x*samples+dx))*3+c]];
+    double value=sum/divisor;
+    out.rgb[(static_cast<size_t>(y)*w+x)*3+c]=channel(value<=0.0031308?12.92*value:1.055*std::pow(value,1.0/2.4)-0.055);
   }
   return out;
 }

@@ -91,3 +91,5 @@ LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh
 ```
 
 The test script checks SDK pinning, v5 example compilation, JSON schema byte identity, complete summary/signature consistency, sequential multi-file execution, PNG contents and determinism, bounded supersampling, 12-triangle box STL, tween output, CAD PNG/STL exports, CAD operation volume assertions, and host-side validation refusals. The SDK loader rejects every bytecode version except v5. See [`durable-memory/03-build-run-test.md`](durable-memory/03-build-run-test.md), [`durable-memory/04-gotchas.md`](durable-memory/04-gotchas.md), and [`durable-memory/05-open-items.md`](durable-memory/05-open-items.md).
+
+Supersampling uses an n×n box filter over all subpixels, decoding sRGB bytes to linear light for averaging and encoding the result back to sRGB. Output dimensions stay unchanged, including odd sizes. Both raster dimensions after multiplication by n must be at most 8192, with at most 16,777,216 high-resolution pixels; this bounds the RGB/depth buffers before allocation. The Lambert shader remains a simple display-colour model, not a physically based renderer.

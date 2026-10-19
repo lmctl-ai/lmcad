@@ -51,6 +51,25 @@ int main(int argc,char** argv){try{
  }
  bool fit_overflow=false;try{lmcad::fitted_camera({},100,45,std::numeric_limits<double>::max());}catch(const std::exception&){fit_overflow=true;}
  check(fit_overflow,"camera fit overflow accepted");
+ lmcad::Camera resolve_camera;resolve_camera.eye={0,0,0};resolve_camera.target={0,0,-1};resolve_camera.fov_degrees=90;
+ lmcad::Light unlit;unlit.ambient=1;
+ lmcad::Shape half;half.material.color={1,1,1};half.mesh.triangles={{{-1,-1,-1},{0,-1,-1},{0,1,-1}},{{-1,-1,-1},{0,1,-1},{-1,1,-1}}};
+ auto half_pixel=lmcad::render({half},resolve_camera,unlit,{0,0,0},1,1,2);
+ check(half_pixel.rgb==std::vector<unsigned char>({188,188,188}),"resolve averages encoded bytes instead of linear light");
+ for(int samples:{1,2,3,4}){
+   auto native=lmcad::render({half},resolve_camera,unlit,{0.1,0.2,0.3},7*samples,5*samples,1);
+   auto resolved=lmcad::render({half},resolve_camera,unlit,{0.1,0.2,0.3},7,5,samples);
+   check(resolved.width==7&&resolved.height==5&&resolved.rgb.size()==105,"odd-size resolve dimensions");
+   for(int y=0;y<5;++y)for(int x=0;x<7;++x)for(int c=0;c<3;++c){double sum=0;
+     for(int dy=0;dy<samples;++dy)for(int dx=0;dx<samples;++dx){double v=native.rgb[((y*samples+dy)*7*samples+x*samples+dx)*3+c]/255.0;sum+=v<=0.04045?v/12.92:std::pow((v+0.055)/1.055,2.4);}
+     double v=sum/(samples*samples);int expected=int(std::lround(255*(v<=0.0031308?12.92*v:1.055*std::pow(v,1/2.4)-0.055)));
+     check(resolved.rgb[(y*7+x)*3+c]==expected,"resolve misses an edge sample or colour channel");
+   }
+ }
+ for(auto dims:std::vector<std::array<int,3>>{{1,1,0},{1,1,5},{2049,1,4},{1025,1025,4},{2147483647,1,1}}){
+   bool refused=false;try{lmcad::render({},resolve_camera,unlit,{},dims[0],dims[1],dims[2]);}catch(const std::exception&){refused=true;}
+   check(refused,"supersampling allocation limits bypassed");
+ }
  lmcad::Camera clipcam;clipcam.eye={0,0,0};clipcam.target={0,0,-1};clipcam.near_clip=1;clipcam.far_clip=4;
  lmcad::Shape crossing;crossing.mesh.triangles={{{-1,-1,-2},{1,-1,-2},{0,1,-.5}}};
  auto visible=[&](const lmcad::Shape& shape){auto im=lmcad::render({shape},clipcam,lmcad::Light{}, {0,0,0},32,32);size_t n=0;for(auto c:im.rgb)n+=c!=0;return n;};
@@ -113,14 +132,15 @@ int main(int argc,char** argv){try{
  check(aa.rgb==ab.rgb&&aa.rgb.size()==a.rgb.size()&&aa.rgb!=a.rgb,"2x supersampling is nondeterministic, kept the wrong dimensions, or changed no samples");
  auto bytes=read(dir+"/a.png"),other=read(dir+"/b.png");check(bytes==other,"PNG output is not deterministic");
  check(bytes.size()>8&&bytes[0]==137&&bytes[1]=='P'&&bytes[2]=='N'&&bytes[3]=='G',"bad PNG signature");
- size_t pos=8;std::vector<unsigned char> compressed;bool ihdr=false,iend=false;
+ size_t pos=8;std::vector<unsigned char> compressed;bool ihdr=false,iend=false,srgb=false;
  while(pos+12<=bytes.size()){uint32_t n=be32(bytes,pos);pos+=4;size_t start=pos;check(pos+4+n+4<=bytes.size(),"truncated PNG chunk");std::string type(reinterpret_cast<char*>(bytes.data()+pos),4);pos+=4;const unsigned char* data=bytes.data()+pos;
   check(crc(bytes.data()+start,4+n)==be32(bytes,pos+n),"PNG chunk CRC mismatch");
   if(type=="IHDR"){check(n==13&&be32(bytes,pos)==64&&be32(bytes,pos+4)==48,"bad PNG IHDR");ihdr=true;}
+  if(type=="sRGB"){check(n==1&&data[0]==0,"bad sRGB chunk");srgb=true;}
   if(type=="IDAT")compressed.insert(compressed.end(),data,data+n);
   pos+=n+4;if(type=="IEND"){iend=true;break;}
  }
- check(ihdr&&iend&&!compressed.empty(),"missing required PNG chunks");check(compressed.size()>=6,"truncated zlib stream");
+ check(ihdr&&iend&&srgb&&!compressed.empty(),"missing required PNG chunks");check(compressed.size()>=6,"truncated zlib stream");
  std::vector<unsigned char> raw;size_t z=2;bool final=false;
  while(!final){check(z+5<=compressed.size()-4,"truncated stored deflate block");unsigned char hdr=compressed[z++];final=(hdr&1)!=0;check((hdr&6)==0,"PNG writer did not use stored deflate blocks");uint16_t len=uint16_t(compressed[z])|uint16_t(compressed[z+1])<<8;uint16_t inv=uint16_t(compressed[z+2])|uint16_t(compressed[z+3])<<8;z+=4;check(uint16_t(~len)==inv,"bad stored deflate length complement");check(z+len<=compressed.size()-4,"truncated stored deflate data");raw.insert(raw.end(),compressed.begin()+z,compressed.begin()+z+len);z+=len;}
  uint32_t expected=(uint32_t(compressed[compressed.size()-4])<<24)|(uint32_t(compressed[compressed.size()-3])<<16)|(uint32_t(compressed[compressed.size()-2])<<8)|compressed.back();check(adler(raw)==expected,"PNG Adler-32 mismatch");
