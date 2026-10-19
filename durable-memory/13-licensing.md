@@ -1,91 +1,72 @@
-# Third-party licensing and redistribution
+# 13 — Licensing and redistribution
 
-This note inventories third-party material in the lmcad source and Linux
-release executable. It is an engineering inventory, not a legal conclusion.
-The maintainers have not selected lmcad's own license; do not add a repository
-`LICENSE` until that decision is made.
+The operator selected MIT for lmcad-authored code. The exact `LICENSE` text is
+copied from `lmctl-ai/lmcpp` and states `Copyright (c) 2026 Lattice Systems
+LLC`. No email address is included in the project license, README or npm
+metadata. The MIT license covers lmcad's own code and its vendored
+`cpp/dslvm.hpp`, now from the MIT-licensed cpp-dsl-sdk. No separate notice is
+needed for the SDK header or the SDK's `stdlib/` catalog.
 
-## Statically linked Linux components
+## Third-party components
 
-- **Open CASCADE Technology 8.0.1:** the Linux executable statically links
-  `TKernel`, `TKMath`, `TKG2d`, `TKG3d`, `TKGeomBase`, `TKBRep`, `TKGeomAlgo`,
-  `TKTopAlgo`, `TKShHealing`, `TKPrim`, `TKBO`, `TKBool`, `TKFillet`,
-  `TKOffset`, and `TKMesh`. OCCT is LGPL-2.1 with the Open CASCADE exception;
-  source is pinned to `V8_0_1`. Include both upstream license files and
-  prominent attribution that the binary uses OCCT. Because the build links
-  OCCT statically, the distribution must provide an effective way to relink
-  the work with a modified OCCT. This project uses the recipe route: this
-  repository contains [`scripts/build-occt.sh`](../scripts/build-occt.sh),
-  [`.github/occt-cmake-flags.txt`](../.github/occt-cmake-flags.txt), and this
-  pinned source/build description. A release's source and recipe must remain
-  available alongside its binary for the applicable license period; review
-  the exact obligations against the LGPL-2.1 text and OCCT exception before
-  release. OCCT's upstream CMake install places `LICENSE_LGPL_21.txt` and
-  `OCCT_LGPL_EXCEPTION.txt` in its documentation directory.
-- **glibc system archives:** `-static` includes the Ubuntu runner's static
-  libc and related `libm`, pthread, dl, and rt objects as used by the link.
-  Track the Ubuntu image/toolchain version in CI logs and preserve its
-  corresponding notices/source package references when distributing the
-  executable.
-- **GNU libstdc++ and libgcc:** statically linked from the runner GCC toolchain;
-  GNU GPLv3 plus the GCC Runtime Library Exception. The runtime exception
-  permits these runtimes to be used in application binaries. Keep the
-  applicable license and runtime-exception notices with release materials.
-- **No other external libraries are configured into this Linux link closure.**
-  The project uses the system C++ standard library, OCCT, and OS interfaces;
-  PNG/DEFLATE, STL/OBJ, and APNG utilities are in-tree implementations.
+- **OCCT 8.0.1:** Linux executables statically link TKernel, TKMath, TKG2d,
+  TKG3d, TKGeomBase, TKBRep, TKGeomAlgo, TKTopAlgo, TKShHealing, TKPrim,
+  TKBO, TKBool, TKFillet, TKOffset, and TKMesh. OCCT is LGPL-2.1 with the
+  Open CASCADE exception. The exact upstream files are staged as
+  `OCCT-LICENSE_LGPL_21.txt` and `OCCT-LGPL-EXCEPTION.txt`. The binary
+  artifact also contains six lmcad application object files in
+  `lmcad-linux-<arch>-relink-objects.tar.gz`; `OCCT-RELINKING.md` gives the
+  matching static link command. `lmcad-occt-relinking-recipe.tar.gz` includes
+  `scripts/build-occt.sh`, `.github/occt-cmake-flags.txt`, the link guide,
+  both architecture-specific object archives, CMake configuration, and the
+  source/notice material. This supports replacing
+  modified OCCT archives and relinking the application. Preserve the upstream
+  license and exception alongside any redistributed version.
+- **glibc:** fully static Linux binaries include glibc static objects. glibc is
+  LGPL-2.1-or-later. Artifacts include the LGPL-2.1 text and the runner's
+  glibc package copyright metadata; application object files and link
+  instructions are included for relinking against modified libraries.
+- **libstdc++ and libgcc:** these static GCC runtime libraries are GPLv3-or-later
+  with GCC Runtime Library Exception 3.1. The artifact includes GPL-3, the
+  full GCC runtime exception text, and GCC package copyright metadata.
+- **build123d references:** the remaining `reference/python/b3d_*.py` scripts
+  are copied/adapted from the pinned `gumyr/build123d` examples at commit
+  `092c40e3`, Apache-2.0. `licenses/Apache-2.0.txt` is the full upstream
+  license and `licenses/build123d-NOTICE.txt` is the NOTICE from that exact
+  upstream checkout. Preserve their source headers and the NOTICE statement.
+- **PyVista references:** `reference/python/pv_*.py` scripts are copied/adapted
+  from `pyvista/pyvista` commit `e9ae86b16`, MIT. The full license from that
+  checkout is `licenses/PyVista-MIT.txt`.
+- **Font-derived logo reference:** `b3d_04_logo.py` called `Text()` with
+  `font="Arial"`; this system's fontconfig resolves that alias to DejaVu Sans,
+  but the committed outlines do not record their resolved font. To avoid
+  redistributing unverified font-derived outlines, the script and all three
+  committed outputs (PNG, STL, SVG) were removed, along with the ranking entry.
 
-## Copied reference source
+`THIRD_PARTY_NOTICES.md` summarizes the components. The Linux stage script
+puts the project `LICENSE`, `THIRD_PARTY_NOTICES`, and full upstream/system
+license texts beside each binary. Each binary artifact also includes its
+matching relink-object archive and `OCCT-RELINKING.md`. The release job's
+OCCT recipe archive carries `LICENSE` and `THIRD_PARTY_NOTICES` too. The
+private, unpublished npm packages declare `license: MIT` and each package
+contains `LICENSE`, `THIRD_PARTY_NOTICES`, and all applicable notices. They
+remain `private: true` and must not be published yet.
 
-- `reference/python/b3d_01_holes.py`, `b3d_02_lego.py`, `b3d_03_vase.py`,
-  `b3d_04_logo.py`, `b3d_05_tea_cup.py`, and `b3d_06_joints.py`: build123d
-  examples, Apache-2.0, marked with source URL, pinned upstream checkout, and
-  license header. Preserve those
-  notices; Apache-2.0 redistribution requires the license and applicable
-  attribution/notices, and modified files must be marked if modified.
-- `reference/python/pv_01_geometric_objects.py`, `pv_02_boolean_operations.py`,
-  `pv_03_clip_with_plane_box.py`, `pv_04_light_types.py`, `pv_05_glyph.py`,
-  and `pv_06_marching_cubes.py`: PyVista examples, MIT, marked with source URL,
-  upstream revision and license header. Preserve the copyright and permission
-  notice. These Python reference files are not part of the native release
-  assets, but remain in the source repository.
-- `cpp/dslvm.hpp`: copied from the pinned `cpp-dsl-sdk` commit in `sdk.lock`.
-  At this revision the SDK has no `LICENSE` file or explicit license grant.
-  This is an unresolved redistribution blocker for public binaries until the
-  SDK maintainer clarifies licensing. `THIRD_PARTY_NOTICES` records that
-  status without inventing a license.
+## Relinking recipe
 
-## Release notice and relinking recipe
+The application objects are produced by CMake under
+`build/CMakeFiles/lmcad.dir/cpp/`. `scripts/stage-release-notices.sh` archives
+those six objects with the project license, notices and link guide. For an
+OCCT modification, run `scripts/build-occt.sh` with `OCCT_SRC`, `OCCT_BUILD`
+and `OCCT_PREFIX` set, using `.github/occt-cmake-flags.txt`; then follow
+`licenses/LINUX-RELINKING.md` to link the supplied objects against the modified
+15-archive OCCT closure with GCC's static C++ runtime and Linux system
+libraries. For changed lmcad source, rebuild through CMake with
+`-DLMCAD_OCCT_PREFIX=<modified-prefix> -DLMCAD_FULL_STATIC=ON`.
 
-The tag release job copies [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)
-to `dist/THIRD_PARTY_NOTICES` and attaches it beside both Linux binaries. The
-release assets also include the exact OCCT LGPL-2.1 and exception files from
-the cached install prefix, the runner's LGPL/GPL and copyright notices, and an
-`lmcad-occt-relinking-recipe.tar.gz`. The private, unpublished npm layout also
-includes these notices in its package folders. Do not publish the npm layout
-while `license` remains `UNLICENSED` and `private: true`.
-
-The OCCT configure flags are stored in `.github/occt-cmake-flags.txt`; CI hashes
-that file in its cache key. The cold build script checks out tag `V8_0_1`,
-builds the static libraries with `nice -n 10` and three parallel jobs, and
-installs into a cacheable prefix. That script and its pinned tag/configuration
-are the relinking recipe for the OCCT archive set. Retain the matching source
-availability, compiler/toolchain identification, CMake options, and release
-binary together. The release recipe archive contains `scripts/build-occt.sh`,
-the hashed `.github/occt-cmake-flags.txt`, and this licensing note. See the
-primary upstream license files:
-
-- [OCCT README/license statement](https://github.com/Open-Cascade-SAS/OCCT#license)
-- [OCCT LGPL-2.1 and exception](https://github.com/Open-Cascade-SAS/OCCT/blob/V8_0_1/OCCT_LGPL_EXCEPTION.txt)
-- [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
-- [MIT License](https://opensource.org/license/mit)
-- [GCC libstdc++ runtime license and exception](https://gcc.gnu.org/onlinedocs/gcc-13.3.0/libstdc++/manual/manual/license.html)
-
-
-## Linux Actions verification (2026-10-19)
-
-- Cold run [`39264695761`](https://github.com/lmctlhq/lmcad/actions/runs/39264695761): x64 OCCT install took 34m24s; arm64 took 20m58s. Both jobs passed `test.sh` (26 checks using the published v5 compiler), the static executable check (`ldd`: `not a dynamic executable`), notice staging, and artifact upload. The measured x64 time exceeded the earlier ~16-minute estimate; allow up to about 35 minutes for a cold x64 runner.
-- The saved install-prefix caches were 27.47 MiB for x64 and 27.77 MiB for arm64. Warm manual run [`39270104147`](https://github.com/lmctlhq/lmcad/actions/runs/39270104147) restored both cache keys, skipped the OCCT build, and completed the full Linux jobs in 76 seconds (x64) and 74 seconds (arm64); tests and static checks passed again.
-- Release staging produced x64 (30,116,488 bytes) and arm64 (26,767,080 bytes) executables. Both job artifacts contained `THIRD_PARTY_NOTICES`, the OCCT LGPL and exception texts, LGPL/GPL texts, and GCC/glibc copyright notices. The notice-staging script and private npm layout were also smoke-checked locally; `private: true` and both optional platform packages were present.
-- macOS and Windows were skipped in both default Linux runs. Their workflow-dispatch gates and build notes were inspected. The tag-gated release job was inspected but not run because this verification did not create a release tag.
-- Summing Linux job durations returned by `gh run view --json jobs` across this CI effort gives about 142 Linux runner-minutes, including canceled cold attempts and the first failed cold run before the fixes. GitHub billing totals were not exposed by the available CLI data.
+The OCCT configure flags are part of the CI cache key. CI caches the installed
+prefix by OCCT version, flags hash, architecture and exact GCC version. The
+measured cold build in run 39264695761 was 34m24s on x64 and 20m58s on arm64;
+warm run 39270104147 restored both prefixes and completed the full jobs in 76s
+and 74s. The tag release job was inspected but has not yet been exercised by a
+real tag. macOS and Windows remain gated placeholders pending platform ports.

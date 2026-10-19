@@ -1,6 +1,6 @@
 # lmcad
 
-`lmcad` is a headless C++ host for lmscript DSL bytecode. It embeds the exact bytes of [`schema/lmcad.dsl.json`](schema/lmcad.dsl.json), vendors the pinned header-only [`cpp-dsl-sdk`](cpp/dslvm.hpp), and uses OpenCASCADE for solid modeling. OCCT shapes are tessellated into lmcad's mesh; the in-tree rasterizer, PNG/PPM writers, and STL/OBJ exporters consume that mesh. The release executable is fully statically linked and has no runtime shared-library dependencies. OCCT is licensed under LGPL-2.1 with the Open CASCADE exception; review its redistribution terms before shipping.
+`lmcad` is a headless C++ host for lmscript DSL bytecode. It embeds the exact bytes of [`schema/lmcad.dsl.json`](schema/lmcad.dsl.json), vendors the pinned header-only [`cpp-dsl-sdk`](cpp/dslvm.hpp), and uses OpenCASCADE for solid modeling. OCCT shapes are tessellated into lmcad's mesh; the in-tree rasterizer, PNG/PPM writers, and STL/OBJ exporters consume that mesh. The release executable is fully statically linked and has no runtime shared-library dependencies. The project is licensed under MIT; third-party terms and static relinking materials are listed in `THIRD_PARTY_NOTICES.md` and the release assets.
 
 ## Build OpenCASCADE once
 
@@ -27,7 +27,7 @@ ldd build/lmcad  # prints: not a dynamic executable
 stat -c '%s bytes' build/lmcad
 ```
 
-The final AArch64 binary in this configuration is 26,762,776 bytes (25.5 MiB). Set `LMCAD_OCCT_PREFIX` when using a different install location.
+The verified AArch64 release binary is 26,767,080 bytes (25.5 MiB). Set `LMCAD_OCCT_PREFIX` when using a different install location.
 
 `test.sh` prefers `lmscript` on PATH when it accepts schema v2 and compiles a while-loop probe to v5 bytecode. CI installs the published npm `@lmctl-ai/lmctl@0.2.347` compiler and uses this probe; otherwise it uses `scripts/lmscript-mono.sh`, a small adapter that imports the compiler sources from a local lmscript checkout (`LMSCRIPT_SOURCE`; maintainers only, the sources are not public). Strangers: `npm i -g @lmctl-ai/lmctl`. The adapter compiles standalone `_dsl_` blocks only. Set `LMSCRIPT_BIN` to explicitly select a compiler.
 
@@ -88,3 +88,13 @@ The test script checks SDK pinning, v5 example compilation, JSON schema byte ide
 Linux CI builds static OCCT once per runner architecture/toolchain cache key, then builds the fully static host and runs `test.sh`. The verified cold run produced 30,116,488-byte x64 and 26,767,080-byte arm64 executables; warm jobs passed all 26 CI checks and `ldd` reported `not a dynamic executable`. The prefix caches were 27.47 MiB (x64) and 27.77 MiB (arm64). On `v*` tags it attaches `lmcad-linux-x64`, `lmcad-linux-arm64`, the license/notice files, and an OCCT relinking-recipe archive. `.github/workflows/ci.yml` includes manual-only macOS and Windows placeholders; macOS needs platform-specific non-`-static` link settings, while Windows needs a MinGW-w64 route and a POSIX API port. See [`durable-memory/13-licensing.md`](durable-memory/13-licensing.md) before redistributing binaries.
 
 Supersampling uses an n×n box filter over all subpixels, decoding sRGB bytes to linear light for averaging and encoding the result back to sRGB. Output dimensions stay unchanged, including odd sizes. Both raster dimensions after multiplication by n must be at most 8192, with at most 16,777,216 high-resolution pixels; this bounds the RGB/depth buffers before allocation. The Lambert shader remains a simple display-colour model, not a physically based renderer.
+
+## License
+
+lmcad-authored code is licensed under the MIT License; see [`LICENSE`](LICENSE).
+This also covers the vendored `cpp/dslvm.hpp`. OCCT and copied Python reference
+examples retain their separate licenses and notices listed in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Every Linux release artifact
+includes `LICENSE`, `THIRD_PARTY_NOTICES`, the relevant full license texts, and
+OCCT relinking instructions and object files. The private npm packages declare
+MIT but remain unpublished.

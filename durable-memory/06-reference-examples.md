@@ -1,6 +1,6 @@
 # 06 — Reference examples (build123d + pyvista)
 
-What a C++ replacement for "Python CAD + render" has to cover, based on 12 real,
+What a C++ replacement for "Python CAD + render" has to cover, based on 11 real,
 official examples that were run headlessly on this box (aarch64 Ubuntu, no display)
 on 2026-10-18.
 
@@ -52,9 +52,8 @@ light, and STL/OBJ/PNG output. 1 = trivial, 5 = needs a major subsystem.
 | 1 | `b3d_01_holes` (examples/holes.py) | 4 plates: through hole, counterbore, countersink (recessed + flush) | Box, Locations, Hole/CounterBoreHole/CounterSinkHole = boolean subtract of cylinder/cone | yes: `out/b3d_01_holes/b3d_01_holes.{stl,png}` (1848 tris) | **2**: mesh boolean subtract, cone primitive |
 | 2 | `b3d_02_lego` (lego.py) | 6x2 Lego brick with pips and inner supports | BuildSketch Rectangle, 2D offset (walls), GridLocations arrays, extrude, Circle, Mode.SUBTRACT, ExportSVG (only behind a flag) | yes: `out/b3d_02_lego/b3d_02_lego.{stl,png}` (3980 tris) | **3**: 2D sketch + polygon offset, extrude, boolean, grid patterns |
 | 3 | `b3d_03_vase` (vase.py) | revolved vase, shelled, top lip filleted | BuildLine (Line, RadiusArc, Spline, Polyline; `@`/`%` position/tangent), make_face, **revolve**, **shell (offset with opening)**, fillet selected by position/geom type | yes: `out/b3d_03_vase/b3d_03_vase.{stl,png}` (11422 tris) | **3**: splines/arcs → polyline, revolve (lathe), shell (= revolve a thickened profile); B-rep fillet is the hard part |
-| 4 | `b3d_04_logo` (build123d_logo.py) | former build123d logo: text "123d"/"build" + dimension lines; extruded "3d" | **Text** (font outlines), lines/arrows, extrude, `ExportSVG` → `logo.svg` | yes: `out/b3d_04_logo/{b3d_04_logo.stl,b3d_04_logo.png,logo.svg}`. The STL/PNG contains only the extruded solid ("3d"); the full 2D logo is in logo.svg | **4**: font loading + glyph outline triangulation (stb_truetype-level), SVG export |
-| 5 | `b3d_05_tea_cup` (tea_cup.py) | porcelain tea cup with swept handle | revolve, shell (offset openings), **fillet all edges**, **sweep** of a rounded rectangle along a spline, union, `export_gltf` | yes: `out/b3d_05_tea_cup/{b3d_05_tea_cup.stl,png, tea_cup.glb,.bin}` (12616 tris) | **5**: sweep along spline is doable; robust fillet of all edges + union is real B-rep/CSG |
-| 6 | `b3d_06_joints` (joints.py) | tapered base box with 6 arms attached by Rigid/Revolute/Linear/Cylindrical/Ball joints | custom Solid subclass, extrude with **taper**, fillet, edge/face selectors (sort_by/filter_by), **Joints + connect_to** (assembly positioning), Location/Plane math | yes: `out/b3d_06_joints/b3d_06_joints.{stl,png}` (7 solids, 5858 tris) | **4**: assembly/joint frame math is easy; taper extrude + fillet + topology selectors need B-rep |
+| 4 | `b3d_05_tea_cup` (tea_cup.py) | porcelain tea cup with swept handle | revolve, shell (offset openings), **fillet all edges**, **sweep** of a rounded rectangle along a spline, union, `export_gltf` | yes: `out/b3d_05_tea_cup/{b3d_05_tea_cup.stl,png, tea_cup.glb,.bin}` (12616 tris) | **5**: sweep along spline is doable; robust fillet of all edges + union is real B-rep/CSG |
+| 5 | `b3d_06_joints` (joints.py) | tapered base box with 6 arms attached by Rigid/Revolute/Linear/Cylindrical/Ball joints | custom Solid subclass, extrude with **taper**, fillet, edge/face selectors (sort_by/filter_by), **Joints + connect_to** (assembly positioning), Location/Plane math | yes: `out/b3d_06_joints/b3d_06_joints.{stl,png}` (7 solids, 5858 tris) | **4**: assembly/joint frame math is easy; taper extrude + fillet + topology selectors need B-rep |
 
 ### pyvista
 

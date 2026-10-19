@@ -219,10 +219,20 @@ jobs:
           merge-multiple: true
       - name: attach third-party notices and private npm layout
         run: |
+          cp LICENSE dist/LICENSE
           cp THIRD_PARTY_NOTICES.md dist/THIRD_PARTY_NOTICES
-          mkdir -p relinking/.github relinking/scripts relinking/durable-memory
+          mkdir -p relinking/.github relinking/scripts relinking/licenses relinking/cpp relinking/schema relinking/tools relinking/objects relinking/durable-memory
+          cp LICENSE relinking/LICENSE
+          cp THIRD_PARTY_NOTICES.md relinking/THIRD_PARTY_NOTICES
           cp .github/occt-cmake-flags.txt relinking/.github/
           cp scripts/build-occt.sh relinking/scripts/
+          cp CMakeLists.txt relinking/
+          cp cpp/*.cpp cpp/*.hpp relinking/cpp/
+          cp schema/lmcad.dsl.json relinking/schema/
+          cp tools/apng-extract.cpp relinking/tools/
+          cp licenses/* relinking/licenses/
+          cp dist/lmcad-linux-*-relink-objects.tar.gz relinking/objects/
+          cp dist/OCCT-LICENSE_LGPL_21.txt dist/OCCT-LGPL-EXCEPTION.txt dist/LGPL-2.1.txt dist/GPL-3.txt dist/GCC-RUNTIME-LIBRARY-EXCEPTION-3.1.txt dist/GCC-TOOLCHAIN-COPYRIGHT dist/GLIBC-COPYRIGHT relinking/licenses/
           cp durable-memory/13-licensing.md relinking/durable-memory/
           tar -czf dist/lmcad-occt-relinking-recipe.tar.gz -C relinking .
           scripts/npm-layout.sh dist npm-packages "${GITHUB_REF_NAME#v}"
