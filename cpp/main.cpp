@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iomanip>
 #include <memory>
+#include <map>
 #include <sstream>
 #include <vector>
 
@@ -25,6 +26,7 @@ struct Host {
   lmcad::Camera camera;
   lmcad::Light light;
   lmcad::Color background{.08,.09,.12};
+  int supersample=2;
   bool has_camera=false, has_light=false;
   template<class T> Value hold(std::vector<std::unique_ptr<T>>& arena,const char* type,T value){if(arena.size()>=4096)throw dslvm::Error(std::string(type)+" object limit exceeded (4096)");arena.push_back(std::make_unique<T>(std::move(value)));return Value::object(type,arena.back().get());}
 };
@@ -66,9 +68,12 @@ void register_host(dslvm::Registry& r,Host& h){
   checked_method(r,"Scene","sphere",{"float","Material"},"Shape",[&h](void*,Args& a){positive(a[0].f,"sphere radius");return h.hold(h.shapes,"Shape",make_shape(lmcad::cad::sphere(a[0].f),*static_cast<lmcad::Material*>(a[1].obj)));});
   checked_method(r,"Scene","cylinder",{"float","float","Material"},"Shape",[&h](void*,Args& a){positive(a[0].f,"cylinder radius");positive(a[1].f,"cylinder height");return h.hold(h.shapes,"Shape",make_shape(lmcad::cad::cylinder(a[0].f,a[1].f),*static_cast<lmcad::Material*>(a[2].obj)));});
   checked_method(r,"Scene","camera",{"float","float","float","float","float","float","float"},"Camera",[&h](void*,Args& a){for(auto& x:a)finite(x.f,"camera argument");if(a[0].f<=0||a[0].f>=179)throw dslvm::Error("camera field of view must be between 0 and 179 degrees");h.camera={a[0].f,vec(a,1),vec(a,4),.01,10000};try{lmcad::normalized(h.camera.target-h.camera.eye);lmcad::normalized(lmcad::cross(h.camera.target-h.camera.eye,{0,1,0}));}catch(...){throw dslvm::Error("camera eye and target must differ and view direction must not be vertical");}h.has_camera=true;return Value::object("Camera",&h.camera);});
-  checked_method(r,"Scene","directional_light",{"float","float","float","float"},"Light",[&h](void*,Args& a){for(auto& x:a)finite(x.f,"directional light argument");if(a[3].f<0)throw dslvm::Error("light intensity must not be negative");try{h.light={lmcad::normalized(vec(a,0)),a[3].f};}catch(...){throw dslvm::Error("light direction must be nonzero");}h.has_light=true;return Value::object("Light",&h.light);});
+  checked_method(r,"Scene","directional_light",{"float","float","float","float"},"Light",[&h](void*,Args& a){for(auto& x:a)finite(x.f,"directional light argument");if(a[3].f<0)throw dslvm::Error("light intensity must not be negative");try{h.light.direction=lmcad::normalized(vec(a,0));}catch(...){throw dslvm::Error("light direction must be nonzero");}h.light.intensity=a[3].f;h.has_light=true;return Value::object("Light",&h.light);});
+  checked_method(r,"Scene","fill_light",{"float","float","float","float"},"Light",[&h](void*,Args& a){for(auto& x:a)finite(x.f,"fill light argument");if(a[3].f<0)throw dslvm::Error("fill light intensity must not be negative");try{h.light.fill_direction=lmcad::normalized(vec(a,0));}catch(...){throw dslvm::Error("fill light direction must be nonzero");}h.light.fill_intensity=a[3].f;return Value::object("Light",&h.light);});
+  checked_method(r,"Scene","ambient",{"float"},"Scene",[&h](void* p,Args& a){color_range(a[0].f,"ambient level");h.light.ambient=a[0].f;return Value::object("Scene",p);});
+  checked_method(r,"Scene","supersample",{"int"},"Scene",[&h](void* p,Args& a){if(a[0].i<1||a[0].i>4)throw dslvm::Error("supersample must be between 1 and 4");h.supersample=static_cast<int>(a[0].i);return Value::object("Scene",p);});
   auto values=[&h](){std::vector<lmcad::Shape> s;s.reserve(h.shapes.size());for(const auto& p:h.shapes)s.push_back(p->display);return s;};
-  auto render=[&h,values](const std::string& path,int64_t w,int64_t height,bool png){if(!h.has_camera)throw dslvm::Error("render requires a camera");if(path.empty())throw dslvm::Error("output path must not be empty");if(w<1||height<1||w>8192||height>8192||uint64_t(w)*height>16777216)throw dslvm::Error("image dimensions exceed limits (1..8192 per side, 16777216 pixels total)");try{auto scene=values();auto image=lmcad::render(scene,h.camera,h.light,h.background,w,height);if(png)lmcad::write_png(path,image);else lmcad::write_ppm(path,image);}catch(const dslvm::Error&){throw;}catch(const std::exception& e){throw dslvm::Error(e.what());}};
+  auto render=[&h,values](const std::string& path,int64_t w,int64_t height,bool png){if(!h.has_camera)throw dslvm::Error("render requires a camera");if(path.empty())throw dslvm::Error("output path must not be empty");if(w<1||height<1||w>8192||height>8192||uint64_t(w)*height>16777216)throw dslvm::Error("image dimensions exceed limits (1..8192 per side, 16777216 pixels total)");try{auto scene=values();auto image=lmcad::render(scene,h.camera,h.light,h.background,w,height,h.supersample);if(png)lmcad::write_png(path,image);else lmcad::write_ppm(path,image);}catch(const dslvm::Error&){throw;}catch(const std::exception& e){throw dslvm::Error(e.what());}};
   checked_method(r,"Scene","render_png",{"string","int","int"},"void",[render](void*,Args& a){render(a[0].s,a[1].i,a[2].i,true);return Value::none();});
   checked_method(r,"Scene","render_ppm",{"string","int","int"},"void",[render](void*,Args& a){render(a[0].s,a[1].i,a[2].i,false);return Value::none();});
   checked_method(r,"Scene","export_stl",{"string"},"void",[&h,values](void*,Args& a){if(a[0].s.empty())throw dslvm::Error("output path must not be empty");try{auto scene=values();lmcad::write_stl(a[0].s,scene);}catch(const std::exception& e){throw dslvm::Error(e.what());}return Value::none();});
@@ -79,7 +84,7 @@ void register_host(dslvm::Registry& r,Host& h){
   checked_method(r,"Sketch","close",{},"Sketch",[](void* p,Args&){auto* sk=self<lmcad::cad::Sketch>(p);if(sk->points.size()<3)throw dslvm::Error("sketch needs at least three points");sk->closed=true;return Value::object("Sketch",p);});
   checked_method(r,"Scene","extrude",{"Sketch","float","Material"},"Shape",[&h](void*,Args& a){positive(a[1].f,"extrusion height");return h.hold(h.shapes,"Shape",make_shape(lmcad::cad::extrude(*self<lmcad::cad::Sketch>(a[0].obj),a[1].f),*static_cast<lmcad::Material*>(a[2].obj)));});
   checked_method(r,"Scene","revolve_y",{"Sketch","Material"},"Shape",[&h](void*,Args& a){return h.hold(h.shapes,"Shape",make_shape(lmcad::cad::revolve_y(*self<lmcad::cad::Sketch>(a[0].obj)),*static_cast<lmcad::Material*>(a[1].obj)));});
-  checked_method(r,"Scene","fit_camera",{"float"},"Camera",[&h](void*,Args& a){finite(a[0].f,"camera field of view");if(a[0].f<=1||a[0].f>=179)throw dslvm::Error("camera field of view must be between 1 and 179 degrees");double lo[3]={INFINITY,INFINITY,INFINITY},hi[3]={-INFINITY,-INFINITY,-INFINITY};bool any=false;for(auto& obj:h.shapes)if(obj->display.visible){any=true;auto b=lmcad::cad::bounds(effective(*obj));for(int i=0;i<3;i++){lo[i]=std::min(lo[i],b[i]);hi[i]=std::max(hi[i],b[i+3]);}}if(!any)throw dslvm::Error("fit_camera requires at least one visible shape");lmcad::Vec3 center{(lo[0]+hi[0])/2,(lo[1]+hi[1])/2,(lo[2]+hi[2])/2};double radius=lmcad::length({(hi[0]-lo[0])/2,(hi[1]-lo[1])/2,(hi[2]-lo[2])/2});double dist=std::max(1.0,radius/std::sin(a[0].f*std::acos(-1.0)/360.0)*1.2);auto dir=lmcad::normalized({1.4,1.1,1.7});h.camera={a[0].f,center+dir*dist,center,.01,dist+radius*4};h.has_camera=true;return Value::object("Camera",&h.camera);});
+  checked_method(r,"Scene","fit_camera",{"float","float"},"Camera",[&h](void*,Args& a){finite(a[0].f,"camera field of view");positive(a[1].f,"camera fit margin");if(a[0].f<=1||a[0].f>=179)throw dslvm::Error("camera field of view must be between 1 and 179 degrees");if(a[1].f<1)throw dslvm::Error("camera fit margin must be at least 1");double lo[3]={INFINITY,INFINITY,INFINITY},hi[3]={-INFINITY,-INFINITY,-INFINITY};bool any=false;for(auto& obj:h.shapes)if(obj->display.visible){any=true;auto b=lmcad::cad::bounds(effective(*obj));for(int i=0;i<3;i++){lo[i]=std::min(lo[i],b[i]);hi[i]=std::max(hi[i],b[i+3]);}}if(!any)throw dslvm::Error("fit_camera requires at least one visible shape");lmcad::Vec3 center{(lo[0]+hi[0])/2,(lo[1]+hi[1])/2,(lo[2]+hi[2])/2};double radius=lmcad::length({(hi[0]-lo[0])/2,(hi[1]-lo[1])/2,(hi[2]-lo[2])/2});double dist=std::max(1.0,radius/std::sin(a[0].f*std::acos(-1.0)/360.0)*a[1].f);auto dir=lmcad::normalized({1.4,1.1,1.7});h.camera={a[0].f,center+dir*dist,center,.01,dist+radius*4};h.has_camera=true;return Value::object("Camera",&h.camera);});
   checked_method(r,"Scene","assert_close",{"float","float","float"},"void",[](void*,Args& a){for(auto& v:a)finite(v.f,"assert_close argument");if(a[2].f<0||std::abs(a[0].f-a[1].f)>a[2].f){std::ostringstream message;message<<"assert_close failed: actual="<<std::setprecision(17)<<a[0].f<<", expected="<<a[1].f;throw dslvm::Error(message.str());}return Value::none();});
   auto bake=[](Host::CadShape* sh,TopoDS_Shape shape){sh->brep=std::move(shape);sh->display.mesh=lmcad::cad::tessellate(sh->brep);sh->display.translation={};sh->display.rotation={};sh->display.scale={1,1,1};};
   checked_method(r,"Shape","union",{"Shape"},"Shape",[bake](void* p,Args& a){auto* sh=self<Host::CadShape>(p);bake(sh,lmcad::cad::boolean_union(effective(*sh),effective(*self<Host::CadShape>(a[0].obj))));return Value::object("Shape",p);});
@@ -111,28 +116,41 @@ void register_host(dslvm::Registry& r,Host& h){
   checked_method(r,"Keyframes","at",{"int"},"Keyframe",[&h](void* p,Args& a){auto& rows=*self<std::vector<Host::Keyframe>>(p);if(a[0].i<0||static_cast<uint64_t>(a[0].i)>=rows.size())throw dslvm::Error("keyframe index out of range");return Value::object("Keyframe",&rows[static_cast<size_t>(a[0].i)]);});
   for(const char* field:{"time","x","y","z","r","g","b"})checked_method(r,"Keyframe",field,{},"float",[field](void* p,Args&){auto* k=self<Host::Keyframe>(p);double v=std::string(field)=="time"?k->t:std::string(field)=="x"?k->x:std::string(field)=="y"?k->y:std::string(field)=="z"?k->z:std::string(field)=="r"?k->r:std::string(field)=="g"?k->g:k->b;return Value::real(v);});
 }
+void print_schema_summary(dslvm::Registry& reg){
+  std::vector<std::string> order;std::map<std::string,std::vector<std::string>> members;std::string current;
+  for(const auto& signature:reg.signatures()){
+    if(signature.rfind("context ",0)==0)std::cout<<signature<<"\n";
+    else if(signature.rfind("fn ",0)==0)std::cout<<signature<<"\n";
+    else if(signature.rfind("method ",0)==0){std::string body=signature.substr(7),type=body.substr(0,body.find('.'));if(type!=current){current=type;order.push_back(type);}members[type].push_back(body);}
+  }
+  for(const auto& type:order){std::cout<<type<<":\n";for(const auto& member:members[type])std::cout<<"  "<<member<<"\n";}
+}
 }
 int main(int argc,char** argv){
-  if(argc==2&&std::string(argv[1])=="--schema") {
-    std::cout.write(reinterpret_cast<const char*>(lmcad::embedded_schema),
-                    static_cast<std::streamsize>(lmcad::embedded_schema_size));
-    return std::cout ? 0 : 4;
-  }
   Host host;
   dslvm::Registry reg;
   register_host(reg,host);
+  const std::string usage="usage: lmcad --schema [--json] | --dsl-signatures | --dsl FILE [FILE ...]\n";
+  if(argc>=2&&std::string(argv[1])=="--schema"){
+    if(argc==2){print_schema_summary(reg);return std::cout?0:4;}
+    if(argc==3&&std::string(argv[2])=="--json"){
+      std::cout.write(reinterpret_cast<const char*>(lmcad::embedded_schema),static_cast<std::streamsize>(lmcad::embedded_schema_size));
+      return std::cout?0:4;
+    }
+    std::cerr<<usage;return 2;
+  }
   if(argc==2&&std::string(argv[1])=="--dsl-signatures") {
     for(const auto& signature:reg.signatures()) std::cout<<signature<<"\n";
     return 0;
   }
   if(argc<3||std::string(argv[1])!="--dsl") {
-    std::cerr<<"usage: lmcad --schema | --dsl-signatures | --dsl FILE [FILE ...]\n";
+    std::cerr<<usage;
     return 2;
   }
   // Validate the complete invocation before any block can write output.
   for(int i=2;i<argc;i++) {
     if(std::string(argv[i]).empty()||std::string(argv[i]).rfind("--",0)==0) {
-      std::cerr<<"usage: lmcad --schema | --dsl-signatures | --dsl FILE [FILE ...]\n";
+      std::cerr<<usage;
       return 2;
     }
   }

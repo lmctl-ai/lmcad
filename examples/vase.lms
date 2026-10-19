@@ -8,7 +8,7 @@ profile.point(9.0, 18.0).point(10.0, 26.0).point(10.0, 30.0).point(0.0, 30.0).cl
 let vase = scene.revolve_y(profile, ceramic).name("turned vase");
 vase.hollow_top(1.1);
 scene.assert_close(vase.volume(), 1735.8527040063793, 0.000001);
-scene.fit_camera(38.0);
+scene.fit_camera(38.0, 1.2);
 scene.directional_light(-0.6, -1.0, -0.8, 1.0);
 scene.render_png("build/vase.png", 720, 540);
 scene.export_stl("build/vase.stl");

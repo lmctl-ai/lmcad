@@ -21,15 +21,29 @@ cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMCAD_OCCT_PREF
 cmake --build "$BUILD_DIR" -j3
 ok "host and unit test build"
 
-for example in still-life box-stl loop-row tween plate-with-holes brick vase; do
+for example in still-life box-stl loop-row tween plate-with-holes brick vase glyph-field; do
   "$LMSCRIPT" "examples/$example.lms" "build/$example.dslb" >"$WORK/$example.log" || fail "$example compile with $COMPILER_SOURCE"
   [ "$(od -An -t u1 -j 5 -N 1 "build/$example.dslb" | tr -d ' ')" = 5 ] || fail "$example was not compiled as bytecode v5"
 done
-ok "7 examples compile with $COMPILER_SOURCE as bytecode v5"
+ok "8 examples compile with $COMPILER_SOURCE as bytecode v5"
 
-"$HOST" --schema >"$WORK/embedded-schema.json" || fail "embedded schema print"
+"$HOST" --schema --json >"$WORK/embedded-schema.json" || fail "embedded schema JSON print"
 cmp schema/lmcad.dsl.json "$WORK/embedded-schema.json" || fail "embedded schema differs from source bytes"
-ok "--schema prints byte-identical embedded schema bytes"
+ok "--schema --json prints byte-identical embedded schema bytes"
+"$HOST" --schema >"$WORK/schema-summary.txt" || fail "schema summary print"
+python3 - "$WORK/schema-summary.txt" <<'PY'
+import subprocess,sys
+summary=open(sys.argv[1]).read()
+sigs=subprocess.run(['build/lmcad','--dsl-signatures'],capture_output=True,text=True,check=True).stdout.splitlines()
+missing=[]
+for line in sigs:
+  needle=line[7:] if line.startswith('method ') else line[3:] if line.startswith('fn ') else line
+  if needle not in summary: missing.append(needle)
+assert not missing, missing
+assert summary.index('context scene: Scene') < summary.index('Scene:')
+print(f'{len(sigs)} canonical members listed')
+PY
+ok "--schema summary lists every canonical registry member"
 diff -u <("$LMSCRIPT" --dsl-signatures schema/lmcad.dsl.json) <("$HOST" --dsl-signatures) || fail "host/compiler signatures differ"
 ok "typed registry signatures match compiler schema signatures"
 
@@ -41,7 +55,8 @@ rm -f build/tween-*.png
 "$HOST" --dsl build/plate-with-holes.dslb || fail "plate with holes run"
 "$HOST" --dsl build/brick.dslb || fail "brick run"
 "$HOST" --dsl build/vase.dslb || fail "vase run"
-ok "still-life, STL, loop/tween, plate, brick, and vase programs run"
+"$HOST" --dsl build/glyph-field.dslb || fail "glyph field run"
+ok "still-life, STL, loop/tween, plate, brick, vase, and glyph field programs run"
 "$HOST" --dsl build/loop-row.dslb build/loop-row.dslb >"$WORK/multi.jsonl" || fail "multi-bytecode invocation"
 [ "$(wc -l < "$WORK/multi.jsonl" | tr -d ' ')" = 2 ] || fail "multiple bytecode files did not run in order"
 ok "multiple bytecode files run sequentially against one embedded schema"
@@ -61,13 +76,13 @@ center=raw[(h//2)*stride+1+3*(w//2):(h//2)*stride+4+3*(w//2)]; assert center != 
 frames=sorted(bdir.glob('tween-*.png')); assert len(frames)==30,len(frames)
 hashes=[hashlib.sha256(p.read_bytes()).digest() for p in frames]; assert len(set(hashes))==30
 assert (bdir/'loop-row.png').stat().st_size>1000
-for name in ('plate-with-holes','brick','vase'):
+for name in ('plate-with-holes','brick','vase','glyph-field'):
     image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
     ww,hh=struct.unpack_from('>II',image,16); assert (ww,hh)==(720,540)
     facets=(bdir/f'{name}.stl').read_bytes(); count=struct.unpack_from('<I',facets,80)[0]; assert count>100 and len(facets)==84+count*50
 print(f'PNG 640x480 + CAD PNG 720x540, PPM/OBJ valid, STL box facets={n}, CAD STL facets checked, tween frames={len(frames)}, unique={len(set(hashes))}')
 PY
-ok "PNG dimensions/pixels, STL facets, CAD exports, loop render, and 30 distinct tween frames"
+ok "PNG dimensions/pixels, STL facets, CAD exports, loop render, glyph field, and 30 distinct tween frames"
 "$UNIT" "$WORK" || fail "C++ unit checks"
 ok "PNG CRC/Adler and raster determinism checks"
 
@@ -81,7 +96,7 @@ import hashlib,pathlib,sys
 p=pathlib.Path(sys.argv[1]); files=sorted(p.glob('tween-*.png')); assert len(files)==30; hashes='\n'.join(hashlib.sha256(x.read_bytes()).hexdigest() for x in files); assert hashes==pathlib.Path(sys.argv[2]).read_text(); print('30 deterministic frame files present')
 PY
 ok "tween frame rerun completes deterministically"
-for example in plate-with-holes brick vase; do
+for example in plate-with-holes brick vase glyph-field; do
   cp "build/$example.png" "$WORK/$example.before.png"
   cp "build/$example.stl" "$WORK/$example.before.stl"
   "$HOST" --dsl "build/$example.dslb" >/dev/null || fail "$example deterministic rerun"
@@ -108,6 +123,16 @@ EOF2
 set +e; out="$("$HOST" --dsl "$WORK/no-camera.dslb" 2>&1)"; code=$?; set -e
 [ "$code" = 3 ] && [[ "$out" == *'render requires a camera'* ]] || fail "camera validation refusal (exit $code): $out"
 ok "camera required validation (exit 3)"
+cat > "$WORK/bad-supersample.lms" <<EOF2
+p = _dsl_ schema="$HERE/schema/lmcad.dsl.json";
+scene.supersample(5);
+end _dsl_
+savedsl(p, "$WORK/bad-supersample.dslb");
+EOF2
+"$LMSCRIPT" "$WORK/bad-supersample.lms" >/dev/null || fail "invalid supersample DSL compile"
+set +e; out="$($HOST --dsl "$WORK/bad-supersample.dslb" 2>&1)"; code=$?; set -e
+[ "$code" = 3 ] && [[ "$out" == *'supersample must be between 1 and 4'* ]] || fail "invalid supersample was accepted (exit $code): $out"
+ok "supersampling factor is bounded to 1..4"
 cat > "$WORK/bad-fillet.lms" <<EOF2
 p = _dsl_ schema="$HERE/schema/lmcad.dsl.json";
 let shape = scene.box(10.0, 10.0, 10.0, material());

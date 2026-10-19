@@ -98,6 +98,8 @@ int main(int argc,char** argv){try{
  lmcad::Camera camera;camera.eye={3,2,5};camera.target={0,0,0};lmcad::Light light;light.direction={-1,-1,-1};
  auto a=lmcad::render({box},camera,light,{.1,.2,.3},64,48),b=lmcad::render({box},camera,light,{.1,.2,.3},64,48);
  check(a.rgb==b.rgb,"raster output is not deterministic");lmcad::write_png(dir+"/a.png",a);lmcad::write_png(dir+"/b.png",b);
+ auto aa=lmcad::render({box},camera,light,{.1,.2,.3},64,48,2),ab=lmcad::render({box},camera,light,{.1,.2,.3},64,48,2);
+ check(aa.rgb==ab.rgb&&aa.rgb.size()==a.rgb.size(),"2x supersampled raster output is not deterministic or changed output dimensions");
  auto bytes=read(dir+"/a.png"),other=read(dir+"/b.png");check(bytes==other,"PNG output is not deterministic");
  check(bytes.size()>8&&bytes[0]==137&&bytes[1]=='P'&&bytes[2]=='N'&&bytes[3]=='G',"bad PNG signature");
  size_t pos=8;std::vector<unsigned char> compressed;bool ihdr=false,iend=false;

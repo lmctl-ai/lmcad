@@ -24,13 +24,13 @@ template<class Plane> std::vector<ScreenVertex> clip(const std::vector<ScreenVer
 }
 unsigned char channel(double v) { return static_cast<unsigned char>(std::lround(std::clamp(v,0.0,1.0)*255.0)); }
 }
-Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& light,Color bg,int w,int h) {
+static Image render_native(const std::vector<Shape>& shapes,const Camera& camera,const Light& light,Color bg,int w,int h) {
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16777216)throw std::runtime_error("image dimensions exceed limits");
   Image im; im.width=w; im.height=h; im.rgb.resize(static_cast<size_t>(w)*h*3);
   for(size_t i=0;i<static_cast<size_t>(w)*h;i++){im.rgb[3*i]=channel(bg.r);im.rgb[3*i+1]=channel(bg.g);im.rgb[3*i+2]=channel(bg.b);}
   std::vector<double> depth(static_cast<size_t>(w)*h,std::numeric_limits<double>::infinity());
   Vec3 forward=normalized(camera.target-camera.eye), right=normalized(cross(forward,{0,1,0})), up=normalized(cross(right,forward));
-  long double focal=(0.5L*h)/std::tan(static_cast<long double>(camera.fov_degrees)*std::acos(-1.0L)/360.0L); Vec3 tolight=normalized(light.direction*-1.0);
+  long double focal=(0.5L*h)/std::tan(static_cast<long double>(camera.fov_degrees)*std::acos(-1.0L)/360.0L); Vec3 tolight=normalized(light.direction*-1.0), filllight=normalized(light.fill_direction*-1.0);
   for(const auto& shape:shapes) if(shape.visible) for(const auto& local:shape.mesh.triangles) {
     auto triangle=transform_triangle(shape,local);
     Vec3 p[3]={triangle.a,triangle.b,triangle.c};
@@ -64,11 +64,26 @@ Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& 
       double zz=1.0/(a/v[0].z+b/v[1].z+c/v[2].z); size_t at=static_cast<size_t>(y)*w+x; if(zz>=depth[at])continue; depth[at]=zz;
       long double wa=a/v[0].z,wb=b/v[1].z,wc=c/v[2].z,sum=wa+wb+wc;Vec3 normal;
       try{normal=normalized((v[0].normal*static_cast<double>(wa)+v[1].normal*static_cast<double>(wb)+v[2].normal*static_cast<double>(wc))/static_cast<double>(sum));}catch(...){normal=face_normal;}
-      double diffuse=std::max(0.0,dot(normal,tolight))*light.intensity;double shade=.24+.76*std::min(1.0,diffuse);
+      double diffuse=std::max(0.0,dot(normal,tolight))*light.intensity+std::max(0.0,dot(normal,filllight))*light.fill_intensity;double shade=light.ambient+(1.0-light.ambient)*std::min(1.0,diffuse);
       im.rgb[3*at]=channel(shape.material.color.r*shade);im.rgb[3*at+1]=channel(shape.material.color.g*shade);im.rgb[3*at+2]=channel(shape.material.color.b*shade);
     }
     }
   }
   return im;
+}
+Image render(const std::vector<Shape>& shapes,const Camera& camera,const Light& light,Color bg,int w,int h,int samples) {
+  if(samples<1||samples>4)throw std::runtime_error("supersample must be between 1 and 4");
+  if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16777216)throw std::runtime_error("image dimensions exceed limits");
+  const uint64_t sw=uint64_t(w)*samples, sh=uint64_t(h)*samples;
+  if(sw>8192||sh>8192||sw*sh>16777216)throw std::runtime_error("supersampled image exceeds raster limits");
+  if(samples==1)return render_native(shapes,camera,light,bg,w,h);
+  Image hi=render_native(shapes,camera,light,bg,static_cast<int>(sw),static_cast<int>(sh));
+  Image out;out.width=w;out.height=h;out.rgb.resize(static_cast<size_t>(w)*h*3);
+  const unsigned divisor=samples*samples;
+  for(int y=0;y<h;y++)for(int x=0;x<w;x++)for(int c=0;c<3;c++){
+    unsigned sum=0;for(int dy=0;dy<samples;dy++)for(int dx=0;dx<samples;dx++)sum+=hi.rgb[(static_cast<size_t>(y*samples+dy)*hi.width+(x*samples+dx))*3+c];
+    out.rgb[(static_cast<size_t>(y)*w+x)*3+c]=static_cast<unsigned char>((sum+divisor/2)/divisor);
+  }
+  return out;
 }
 }

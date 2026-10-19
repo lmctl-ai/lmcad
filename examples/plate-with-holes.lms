@@ -13,7 +13,7 @@ for (ix in range(0, 4)) {
   }
 }
 scene.assert_close(plate.volume(), 85.3814168308665, 0.000001);
-scene.fit_camera(40.0);
+scene.fit_camera(40.0, 1.2);
 scene.directional_light(-0.6, -1.0, -0.7, 1.0);
 scene.render_png("build/plate-with-holes.png", 720, 540);
 scene.export_stl("build/plate-with-holes.stl");

@@ -133,6 +133,7 @@
         "fit_camera": [
           {
             "params": [
+              "float",
               "float"
             ],
             "returns": "Camera"
@@ -146,6 +147,33 @@
               "float"
             ],
             "returns": "void"
+          }
+        ],
+        "fill_light": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Light"
+          }
+        ],
+        "ambient": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Scene"
+          }
+        ],
+        "supersample": [
+          {
+            "params": [
+              "int"
+            ],
+            "returns": "Scene"
           }
         ]
       }
