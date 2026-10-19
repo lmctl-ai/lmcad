@@ -37,6 +37,13 @@ run('empty-intersection',shape+'let tool=scene.box(1.0,1.0,1.0,material()).posit
 run('empty-cut',shape+'s.cut(s); s.volume();','empty')
 run('large-fillet',shape+'s.fillet(100.0);','fillet failed')
 run('large-chamfer',shape+'s.chamfer(100.0);','chamfer failed')
+# Filleted boxes used to fail ("cannot normalize zero or non-finite vector"):
+# canonical corner order turned fillet-seam slivers into zero normals.
+for radius in ['0.05','0.14','0.3']:
+ run('box-fillet-'+radius,shape+f's.fillet({radius}); scene.fit_camera(30.0,1.2); scene.directional_light(-0.5,-1.0,-0.6,0.8); scene.render_png({json.dumps(str(work/"fillet.png"))},48,48);')
+run('box-fillet-volume',shape+'s.fillet(0.14); scene.assert_close(s.volume(),7.902726154935,0.000001);')
+run('box-fillet-cut',shape+'s.fillet(0.14); let h=scene.cylinder(0.5,3.0,material()); s.cut(h); h.visible(false); scene.fit_camera(30.0,1.2); scene.directional_light(-0.5,-1.0,-0.6,0.8); scene.render_png('+json.dumps(str(work/'fillet-cut.png'))+',48,48);')
+print('filleted boxes tessellate, render and keep their analytic volume')
 run('no-planar-shell','scene.sphere(1.0,material()).hollow(0.1);','planar end face')
 for dim in ['0.0','-1.0']:
  run('nonpositive',f'scene.box({dim},1.0,1.0,material());','positive')

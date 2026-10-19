@@ -141,6 +141,13 @@ Mesh tessellate(const TopoDS_Shape& shape,double tolerance){
     return std::tie(a.a.x,a.a.y,a.a.z,a.b.x,a.b.y,a.b.z,a.c.x,a.c.y,a.c.z)<
            std::tie(b.a.x,b.a.y,b.a.z,b.b.x,b.b.y,b.b.z,b.c.x,b.c.y,b.c.z);
   });
+  // Canonical corner order changes which corner the cross product starts
+  // from; for slivers (fillet seams) that can round to an exactly zero or
+  // non-finite normal although the original order had positive area. Such
+  // triangles cover no pixels and no volume: drop them instead of failing.
+  out.triangles.erase(std::remove_if(out.triangles.begin(),out.triangles.end(),[](const Triangle& t){
+    double n=length(cross(t.b-t.a,t.c-t.a));return !(n>0)||!std::isfinite(n);}),out.triangles.end());
+  if(out.triangles.empty())throw std::runtime_error("shape tessellated to no triangles");
   using Key=std::tuple<long long,long long,long long>;auto key=[](Vec3 p){constexpr double q=1e7;return Key{std::llround(p.x*q),std::llround(p.y*q),std::llround(p.z*q)};};
   std::map<Key,std::vector<Vec3>> adjacent;std::vector<Vec3> face_normals;face_normals.reserve(out.triangles.size());
   for(const auto& t:out.triangles){Vec3 n=normalized(cross(t.b-t.a,t.c-t.a));face_normals.push_back(n);for(Vec3 p:{t.a,t.b,t.c})adjacent[key(p)].push_back(n);}
