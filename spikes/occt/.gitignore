@@ -1,0 +1,7 @@
+build*/
+out-*/
+*.o
+*.a
+spike
+spike-dynamic-glibc
+*.stl
