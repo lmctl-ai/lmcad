@@ -37,11 +37,11 @@ void write_apng(const std::string& path,const std::vector<Image>& frames,int fps
   if(uint64_t(w)*h*frames.size()>64000000)throw std::runtime_error("APNG total frame pixel limit exceeded (64000000)");
   std::vector<unsigned char> out=signature();chunk(out,"IHDR",ihdr(frames.front()));chunk(out,"sRGB",{0});
   std::vector<unsigned char> actl;put32(actl,static_cast<uint32_t>(frames.size()));put32(actl,loop_count);chunk(out,"acTL",actl);
-  uint32_t seq=0;const uint16_t delay=static_cast<uint16_t>(std::max(1,int(std::lround(1000.0/fps))));
+  uint32_t seq=0;
   for(size_t i=0;i<frames.size();i++){
     const auto& frame=frames[i];if(frame.width!=w||frame.height!=h)throw std::runtime_error("APNG frames must have identical dimensions");
     auto raw=raw_frame(frame),z=stored_zlib(raw);
-    std::vector<unsigned char> fctl;put32(fctl,seq++);put32(fctl,w);put32(fctl,h);put32(fctl,0);put32(fctl,0);put16(fctl,delay);put16(fctl,1000);fctl.push_back(0);fctl.push_back(0);chunk(out,"fcTL",fctl);
+    std::vector<unsigned char> fctl;put32(fctl,seq++);put32(fctl,w);put32(fctl,h);put32(fctl,0);put32(fctl,0);put16(fctl,1);put16(fctl,static_cast<uint16_t>(fps));fctl.push_back(0);fctl.push_back(0);chunk(out,"fcTL",fctl);
     if(i==0)chunk(out,"IDAT",z);else{std::vector<unsigned char> fdat;put32(fdat,seq++);fdat.insert(fdat.end(),z.begin(),z.end());chunk(out,"fdAT",fdat);}
   }
   chunk(out,"IEND",{});save(path,out);
