@@ -1,0 +1,27 @@
+p = _dsl_ schema="../schema/lmcad.dsl.json";
+let keys = read_keyframes_csv("examples/data/keyframes.csv");
+let mat = material();
+let shape = scene.sphere(0.75, mat);
+scene.camera(38.0, 0.0, 2.8, 8.0, 0.0, 0.0, 0.0);
+scene.directional_light(-0.4, -1.0, -0.5, 1.0);
+scene.background(0.04, 0.06, 0.1);
+let frames_per_segment = 30;
+for (segment in range(0, keys.len() - 1)) {
+  let a = keys.at(segment);
+  let b = keys.at(segment + 1);
+  for (step in range(0, frames_per_segment)) {
+    let t = float(step) / float(frames_per_segment - 1);
+    let e = ease(t);
+    let x = lerp(a.x(), b.x(), e);
+    let y = lerp(a.y(), b.y(), e);
+    let z = lerp(a.z(), b.z(), e);
+    let r = lerp(a.r(), b.r(), e);
+    let g = lerp(a.g(), b.g(), e);
+    let blue = lerp(a.b(), b.b(), e);
+    shape.position(x, y, z).color(r, g, blue);
+    let frame_index = segment * frames_per_segment + step;
+    scene.render_png("build/tween-" + str(frame_index) + ".png", 160, 120);
+  }
+}
+end _dsl_
+savedsl(p, "build/tween.dslb");

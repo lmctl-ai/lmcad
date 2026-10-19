@@ -1,45 +1,53 @@
 # lmcad
 
-`lmcad` is a native, headless C++ host for lmscript `_dsl_` bytecode. A DSL chunk builds a scene through the schema in `schema/lmcad.dsl.json`; the host embeds the pinned `cpp-dsl-sdk` VM, owns the scene objects, then writes still images or triangle mesh exports. It currently renders boxes, spheres and cylinders with a perspective camera and directional light.
+`lmcad` is a native, headless C++ host for lmscript DSL bytecode. Scripts build scenes through [`schema/lmcad.dsl.json`](schema/lmcad.dsl.json); the host embeds the pinned `cpp-dsl-sdk` VM and writes PNG/PPM images and STL/OBJ meshes. The current schema includes range-loop scenes and CSV-driven keyframe animation rendered as numbered PNGs.
 
 ## Requirements
 
 - C++17 compiler, CMake 3.24+, Ninja.
-- `lmscript` 0.2.328 or newer for `_dsl_` / `savedsl` (tests were run with 0.2.333).
-- Python 3 is used by the end-to-end checks to inspect PNG and STL output. The renderer itself has no third-party runtime library.
+- Node.js with TypeScript stripping (`node --experimental-strip-types`) and the sibling `~/lmctl-mono/lmscript` checkout for v4 DSL compilation. `LMSCRIPT_SOURCE` can point `scripts/lmscript-mono.mjs` at another checkout.
+- Python 3 for the integration checks. The native renderer has no third-party runtime library.
+
+The released `lmscript` on PATH is still v3 and cannot compile the v4 examples. `scripts/lmscript-mono.sh` is a thin adapter around the in-tree `dsl.ts` compiler; it does not install packages or modify that checkout.
 
 ## Build and run
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-lmscript examples/still-life.lms build/still-life.dslb
+scripts/lmscript-mono.sh examples/still-life.lms build/still-life.dslb
 build/lmcad --dsl build/still-life.dslb --schema schema/lmcad.dsl.json
-lmscript examples/box-stl.lms build/box-stl.dslb
+scripts/lmscript-mono.sh examples/box-stl.lms build/box-stl.dslb
 build/lmcad --dsl build/box-stl.dslb --schema schema/lmcad.dsl.json
+scripts/lmscript-mono.sh examples/loop-row.lms build/loop-row.dslb
+build/lmcad --dsl build/loop-row.dslb --schema schema/lmcad.dsl.json
+scripts/lmscript-mono.sh examples/tween.lms build/tween.dslb
+build/lmcad --dsl build/tween.dslb --schema schema/lmcad.dsl.json
 ```
 
-The still-life render is written to `build/still-life.png`, with auxiliary PPM and OBJ outputs; the box example writes binary STL to `build/box.stl`. The host accepts a bytecode path and the exact schema bytes used at compile time:
+The examples write `build/still-life.png`, `build/box.stl`, `build/loop-row.png`, and 30 files named `build/tween-0.png` through `build/tween-29.png`. The tween reads `examples/data/keyframes.csv`; DSL code uses `range`, `lerp`, and `ease`. To compare the host's declared API with the compiler's schema view, run:
 
-```text
-lmcad --dsl FILE.dslb --schema SCHEMA.dsl.json
+```sh
+scripts/lmscript-mono.sh --dsl-signatures schema/lmcad.dsl.json > /tmp/schema-signatures
+build/lmcad --dsl-signatures schema/lmcad.dsl.json > /tmp/host-signatures
+diff -u /tmp/schema-signatures /tmp/host-signatures
 ```
 
-## Fully static build
+## Static linking
 
-The normal build statically links libstdc++ and libgcc. On this Linux ARM64 target it leaves only libc and libm as dynamic libraries. A fully static build also works here:
+The normal Release build uses `-static-libstdc++ -static-libgcc`. A full static build is available with `-DLMCAD_FULL_STATIC=ON`:
 
 ```sh
 cmake -S . -B build-static -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMCAD_FULL_STATIC=ON
 cmake --build build-static --target lmcad
 ```
 
-The 2026-10-18 full-static ARM64 binary was 2,501,720 bytes. Target-OS builds should still be measured independently.
-
-## Test
+## Tests
 
 ```sh
-bash test.sh
+./test.sh
+cmake -S . -B build-sanitize -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer -O1' \
+  -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=address,undefined'
+BUILD_DIR=build-sanitize ./test.sh
 ```
-
-The script verifies the SDK pin, compiles both examples, runs the host, inspects PNG signature/dimensions and visible pixels, checks PPM/OBJ output and that the binary STL has 12 box triangles, runs PNG CRC/Adler and raster determinism checks, and checks schema mismatch, argument and missing-camera refusals.

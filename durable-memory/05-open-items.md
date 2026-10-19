@@ -1,12 +1,11 @@
 # Open items
 
 1. Add a configurable camera up vector and expand perspective edge-case fixtures.
-2. Decide whether to implement lightweight mesh CSG, or make OpenCASCADE a separately evaluated optional backend if robust CAD Boolean operations become a requirement.
-3. Decide whether a compressed PNG implementation is worth the added code/dependency cost. Stored DEFLATE currently keeps the binary self-contained and deterministic at the cost of larger files.
-4. Use material roughness in shading or remove it from the next schema version until the renderer supports it. Define whether material handles should remain live references instead of being copied when a shape is created.
-5. Consider OBJ material libraries and a documented glTF subset if interchange needs arise. STL currently omits appearance; OBJ has no MTL.
-6. Keyframes and frame sequencing require the planned coordinated v4 loops and collection semantics. A later host can write numbered PNG frames; an ffmpeg-free codec/container has not been selected.
-7. Add per-OS CI builds and record binary size, static-link result and shared-library audit for every published target. Only the current Linux ARM64 build has been measured.
-8. Expand geometry and raster tests for clipping, transforms, visibility, materials, camera degeneracy, image limits, malformed paths and multiple overlapping surfaces.
-
-The initial end-to-end still-image and STL path is working; these items are follow-on work, not blockers for the current milestone.
+2. Decide whether to implement lightweight mesh CSG or evaluate OpenCASCADE as an optional backend if robust Boolean operations become required.
+3. Consider a compressed PNG implementation; current stored DEFLATE keeps dependencies out and output deterministic at the cost of file size.
+4. Define live versus copied material semantics and use roughness in shading or remove it from a future schema revision.
+5. Consider OBJ MTL support and a documented glTF subset if interchange requires them.
+6. Add an ffmpeg-free video artifact only if a small, maintainable encoder is justified. Numbered PNG frames are the current portable interchange; no video assembly tool is included.
+7. Add per-OS CI builds and record binary size, static-link result, and shared-library audit for each published target.
+8. Expand raster tests for clipping, overlapping surfaces, and camera edge cases.
+9. The current in-tree compiler accepts schema v1 but not the schema v2 overload-array form in the draft. Repro: change `"dsl.schema": 1` to `2` in `schema/lmcad.dsl.json` and invoke `scripts/lmscript-mono.sh --dsl-signatures schema/lmcad.dsl.json`; it rejects with `"dsl.schema" must be 1; found 2`. This is tracked as later compiler/schema work, not an lmcad bytecode-v4 blocker; do not modify `lmctl-mono` in the lmcad step.

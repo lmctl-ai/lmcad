@@ -1,3 +1,4 @@
 /build/
 /build-static/
+/build-sanitize/
 *.dslb
