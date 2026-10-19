@@ -32,7 +32,7 @@ for method, value in [('translate', '1e308'), ('rotate', '1e308'), ('scale', '1e
 tiny = format(Decimal('1e-200'), 'f')
 refuses('scale-underflow', shape + f' s.scale({tiny}, {tiny}, {tiny}); s.scale({tiny}, {tiny}, {tiny});', 'accumulated')
 for width, height in [(0, 8), (-1, 8), (2147483647, 8), (8192, 8192), (4294967297, 8), (8, 4294967297), (-4294967295, 8)]:
-    refuses('image-size', f'scene.camera(45.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0); scene.render_png("{work}/bad.png", {width}, {height});', 'image dimensions exceed limits')
+    refuses('image-size', f'scene.camera(45.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0); scene.render_png("{work.as_posix()}/bad.png", {width}, {height});', 'image dimensions exceed limits')
 print('compiled DSL refusal checks passed')
 
 refuses('material-limit', 'material();\n' * 4097, 'object limit exceeded')
