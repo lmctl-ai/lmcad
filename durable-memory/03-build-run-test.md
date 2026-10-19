@@ -18,7 +18,7 @@ See the copyable OCCT-prefix and application commands in `README.md`. Examples i
 
 `./test.sh` passes **20 checks**: SDK pin, native full-static build, seven v5 compiles, embedded schema byte identity, host/compiler signature parity, seven example executions, sequential multi-bytecode execution, PNG dimensions/pixels, 12-triangle STL, three CAD STL/PNG exports and CAD volume assertions, 30 distinct tween frames, PNG CRC/Adler, raster/tween/CAD determinism, CLI, camera, and invalid-fillet refusals, host validation cases, three-keyframe boundary/endpoint checks, and relocated adapter parsing. The native unit checks cover CSV quoting/CRLF, complete finite numbers, missing/extra columns, and host row/record limits.
 
-The ASan+UBSan variant (`LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh`) passes all **20 checks**; `LMCAD_FULL_STATIC=OFF` lets the sanitizer runtime link dynamically. Fresh-clone results are recorded after the current Step 9 verification. The plate, brick, and vase renders are visually checked in `build/`; their smooth curves and sharp box edges render as expected.
+The ASan+UBSan variant (`LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh`) passes all **20 checks**; `LMCAD_FULL_STATIC=OFF` lets the sanitizer runtime link dynamically. A fresh shallow clone of pushed `e113b70` at `/tmp/lmcad-step9-fresh-20261019`, configured with `LMCAD_OCCT_PREFIX=/home/ubuntu/poc/occt-prefix`, builds and passes all **20 checks**. The plate, brick, and vase renders are visually checked in `build/`; their smooth curves and sharp box edges render as expected.
 
 ## Link checks
 
