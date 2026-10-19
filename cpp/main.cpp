@@ -14,7 +14,6 @@ using dslvm::Args; using dslvm::Value;
 struct Host {
   using Keyframe=lmcad::Keyframe;
   std::vector<std::unique_ptr<std::vector<Keyframe>>> keyframes;
-  std::vector<std::unique_ptr<Keyframe>> keyframe_items;
   std::vector<std::unique_ptr<lmcad::Material>> materials;
   std::vector<std::unique_ptr<lmcad::Shape>> shapes;
   lmcad::Camera camera;
@@ -79,10 +78,10 @@ void register_host(dslvm::Registry& r,Host& h){
   checked_method(r,"Light","intensity",{"float"},"Light",[](void* p,Args& a){finite(a[0].f,"light intensity");if(a[0].f<0)throw dslvm::Error("light intensity must not be negative");self<lmcad::Light>(p)->intensity=a[0].f;return Value::object("Light",p);});
   checked_function(r,"read_keyframes_csv",{"string"},"Keyframes",[&h](Args& a){
     auto rows=std::make_unique<std::vector<Host::Keyframe>>(lmcad::read_keyframes_csv(a[0].s));
-    h.keyframes.push_back(std::move(rows));return Value::object("Keyframes",h.keyframes.back().get());
+    return h.hold(h.keyframes,"Keyframes",std::move(*rows));
   });
   checked_method(r,"Keyframes","len",{},"int",[](void* p,Args&){return Value::integer(static_cast<int64_t>(self<std::vector<Host::Keyframe>>(p)->size()));});
-  checked_method(r,"Keyframes","at",{"int"},"Keyframe",[&h](void* p,Args& a){auto& rows=*self<std::vector<Host::Keyframe>>(p);if(a[0].i<0||static_cast<uint64_t>(a[0].i)>=rows.size())throw dslvm::Error("keyframe index out of range");h.keyframe_items.push_back(std::make_unique<Host::Keyframe>(rows[static_cast<size_t>(a[0].i)]));return Value::object("Keyframe",h.keyframe_items.back().get());});
+  checked_method(r,"Keyframes","at",{"int"},"Keyframe",[&h](void* p,Args& a){auto& rows=*self<std::vector<Host::Keyframe>>(p);if(a[0].i<0||static_cast<uint64_t>(a[0].i)>=rows.size())throw dslvm::Error("keyframe index out of range");return Value::object("Keyframe",&rows[static_cast<size_t>(a[0].i)]);});
   for(const char* field:{"time","x","y","z","r","g","b"})checked_method(r,"Keyframe",field,{},"float",[field](void* p,Args&){auto* k=self<Host::Keyframe>(p);double v=std::string(field)=="time"?k->t:std::string(field)=="x"?k->x:std::string(field)=="y"?k->y:std::string(field)=="z"?k->z:std::string(field)=="r"?k->r:std::string(field)=="g"?k->g:k->b;return Value::real(v);});
 }
 }
