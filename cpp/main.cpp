@@ -30,7 +30,7 @@ lmcad::Vec3 vec(const Args& a,size_t i){return {a[i].f,a[i+1].f,a[i+2].f};}
 lmcad::Shape make_shape(lmcad::Mesh mesh,const lmcad::Material& material){lmcad::Shape s;s.mesh=std::move(mesh);s.material=material;return s;}
 void checked_method(dslvm::Registry& registry,const char* type,const char* name,
                     std::vector<std::string> params,std::string returns,dslvm::Method callback){
-  registry.method(type,name,params,returns,[params=std::move(params),callback,type,name](void* object,Args& args){
+  registry.method(type,name,params,returns,[params,callback,type,name](void* object,Args& args){
     for(size_t i=0;i<params.size();i++){
       const auto& expected=params[i];const auto& value=args[i];
       bool valid=expected=="float"?value.kind==Value::FLOAT:
@@ -43,7 +43,7 @@ void checked_method(dslvm::Registry& registry,const char* type,const char* name,
   });
 }
 void checked_function(dslvm::Registry& r,const char* name,std::vector<std::string> params,std::string returns,dslvm::Function fn){
-  r.function(name,params,returns,[params=std::move(params),fn,name](Args& args){
+  r.function(name,params,returns,[params,fn,name](Args& args){
     if(args.size()!=params.size())throw dslvm::Error(std::string(name)+" argument count mismatch");
     for(size_t i=0;i<params.size();++i){const auto& v=args[i];const auto& e=params[i];bool ok=e=="float"?v.kind==Value::FLOAT:e=="int"?v.kind==Value::INT:e=="string"?v.kind==Value::STR:e=="bool"?v.kind==Value::BOOL:v.kind==Value::OBJ&&v.type==e&&v.obj;if(!ok)throw dslvm::Error(std::string(name)+" argument "+std::to_string(i+1)+" must be "+e);}
     return fn(args);
