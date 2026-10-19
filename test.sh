@@ -116,6 +116,8 @@ EOF2
 set +e; out="$("$HOST" --dsl "$WORK/bad-fillet.dslb" 2>&1)"; code=$?; set -e
 [ "$code" = 3 ] && [[ "$out" == *'fillet failed'* ]] || fail "invalid fillet did not return a host error (exit $code): $out"
 ok "invalid OCCT fillet returns a DSL host error"
+LMSCRIPT_BIN="$LMSCRIPT" LMCAD_HOST="$HOST" python3 tests/cad.py "$WORK"
+ok "CAD sketch validation"
 LMSCRIPT_BIN="$LMSCRIPT" LMCAD_HOST="$HOST" python3 tests/refusals.py "$WORK"
 ok "compiled host validation refusals"
 LMSCRIPT_BIN="$LMSCRIPT" LMCAD_HOST="$HOST" python3 tests/tween.py "$WORK"

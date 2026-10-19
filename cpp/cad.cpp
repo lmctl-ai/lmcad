@@ -3,6 +3,7 @@
 #include <BRepAlgoAPI_Cut.hxx>
 #include <BRepAlgoAPI_Fuse.hxx>
 #include <BRepBndLib.hxx>
+#include <BRepCheck_Analyzer.hxx>
 #include <Bnd_Box.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_MakePolygon.hxx>
@@ -46,7 +47,33 @@ namespace lmcad::cad {
 namespace {
 void require_shape(const TopoDS_Shape& s,const char* operation){if(s.IsNull())throw std::runtime_error(std::string(operation)+" produced an empty shape");}
 TopoDS_Shape checked(const TopoDS_Shape& s,const char* name){require_shape(s,name);return s;}
-void require_sketch(const Sketch& s){if(!s.closed||s.points.size()<3)throw std::runtime_error("sketch must be closed and contain at least three points");}
+void require_sketch(const Sketch& s){
+  if(!s.closed||s.points.size()<3)throw std::runtime_error("sketch must be closed and contain at least three points");
+  auto orient=[](const gp_Pnt2d& a,const gp_Pnt2d& b,const gp_Pnt2d& c){return
+    (static_cast<long double>(b.X())-a.X())*(static_cast<long double>(c.Y())-a.Y())-
+    (static_cast<long double>(b.Y())-a.Y())*(static_cast<long double>(c.X())-a.X());};
+  auto on=[](const gp_Pnt2d& a,const gp_Pnt2d& b,const gp_Pnt2d& p){return
+    p.X()>=std::min(a.X(),b.X())&&p.X()<=std::max(a.X(),b.X())&&
+    p.Y()>=std::min(a.Y(),b.Y())&&p.Y()<=std::max(a.Y(),b.Y());};
+  long double area=0;
+  const size_t n=s.points.size();
+  for(size_t i=0;i<n;++i)if(s.points[i].Distance(s.points[(i+1)%n])<=1e-7)
+    throw std::runtime_error("sketch contains a zero-length edge");
+  for(size_t i=0;i<n;++i){
+    const auto& a=s.points[i];const auto& b=s.points[(i+1)%n];
+    area+=orient(s.points[0],a,b);
+    for(size_t j=i+1;j<n;++j){
+      if(j==i+1||(i==0&&j==n-1))continue;
+      const auto& c=s.points[j];const auto& d=s.points[(j+1)%n];
+      auto ab_c=orient(a,b,c),ab_d=orient(a,b,d),cd_a=orient(c,d,a),cd_b=orient(c,d,b);
+      if(((ab_c>0&&ab_d<0)||(ab_c<0&&ab_d>0))&&((cd_a>0&&cd_b<0)||(cd_a<0&&cd_b>0)))
+        throw std::runtime_error("sketch is self-intersecting");
+      if((ab_c==0&&on(a,b,c))||(ab_d==0&&on(a,b,d))||(cd_a==0&&on(c,d,a))||(cd_b==0&&on(c,d,b)))
+        throw std::runtime_error("sketch is self-intersecting");
+    }
+  }
+  if(std::abs(area)<=1e-14L)throw std::runtime_error("sketch has zero area");
+}
 }
 TopoDS_Shape box(double x,double y,double z){gp_Trsf t;t.SetTranslation(gp_Vec(-x/2,-y/2,-z/2));return BRepBuilderAPI_Transform(BRepPrimAPI_MakeBox(x,y,z).Shape(),t,true).Shape();}
 TopoDS_Shape sphere(double r){return BRepPrimAPI_MakeSphere(r).Shape();}
@@ -70,8 +97,8 @@ TopoDS_Shape transform(const TopoDS_Shape& s,Vec3 t,Vec3 r,Vec3 scale){
   if(scale.x==scale.y&&scale.x==scale.z){gp_Trsf tr;double q=scale.x;tr.SetValues(a*q,b*q,c*q,t.x,d*q,e*q,f*q,t.y,g*q,h*q,i*q,t.z);return BRepBuilderAPI_Transform(s,tr,true).Shape();}
   gp_Mat m(a*scale.x,b*scale.y,c*scale.z,d*scale.x,e*scale.y,f*scale.z,g*scale.x,h*scale.y,i*scale.z);gp_GTrsf gt;gt.SetVectorialPart(m);gt.SetTranslationPart(gp_XYZ(t.x,t.y,t.z));return BRepBuilderAPI_GTransform(s,gt,true).Shape();
 }
-TopoDS_Shape extrude(const Sketch& s,double height){require_sketch(s);BRepBuilderAPI_MakePolygon poly;for(const auto& p:s.points)poly.Add(gp_Pnt(p.X(),p.Y(),0));poly.Close();BRepBuilderAPI_MakeFace face(poly.Wire());if(!face.IsDone())throw std::runtime_error("sketch does not form a valid face");return BRepPrimAPI_MakePrism(face.Face(),gp_Vec(0,0,height)).Shape();}
-TopoDS_Shape revolve_y(const Sketch& s){require_sketch(s);BRepBuilderAPI_MakePolygon poly;for(const auto& p:s.points)poly.Add(gp_Pnt(p.X(),p.Y(),0));poly.Close();BRepBuilderAPI_MakeFace face(poly.Wire());if(!face.IsDone())throw std::runtime_error("profile does not form a valid face");return BRepPrimAPI_MakeRevol(face.Face(),gp_Ax1(gp_Pnt(0,0,0),gp_Dir(0,1,0)),2*std::acos(-1.0)).Shape();}
+TopoDS_Shape extrude(const Sketch& s,double height){require_sketch(s);BRepBuilderAPI_MakePolygon poly;for(const auto& p:s.points)poly.Add(gp_Pnt(p.X(),p.Y(),0));poly.Close();BRepBuilderAPI_MakeFace face(poly.Wire());if(!face.IsDone())throw std::runtime_error("sketch does not form a valid face");auto result=BRepPrimAPI_MakePrism(face.Face(),gp_Vec(0,0,height)).Shape();if(!BRepCheck_Analyzer(result).IsValid())throw std::runtime_error("extrusion produced an invalid solid");return checked(result,"extrusion");}
+TopoDS_Shape revolve_y(const Sketch& s){require_sketch(s);BRepBuilderAPI_MakePolygon poly;for(const auto& p:s.points)poly.Add(gp_Pnt(p.X(),p.Y(),0));poly.Close();BRepBuilderAPI_MakeFace face(poly.Wire());if(!face.IsDone())throw std::runtime_error("profile does not form a valid face");auto result=BRepPrimAPI_MakeRevol(face.Face(),gp_Ax1(gp_Pnt(0,0,0),gp_Dir(0,1,0)),2*std::acos(-1.0)).Shape();if(!BRepCheck_Analyzer(result).IsValid())throw std::runtime_error("revolution produced an invalid solid");return checked(result,"revolution");}
 double volume(const TopoDS_Shape& s){GProp_GProps p;BRepGProp::VolumeProperties(s,p);double v=p.Mass();if(!std::isfinite(v))throw std::runtime_error("volume is not finite");return v;}
 std::array<double,6> bounds(const TopoDS_Shape& s){Bnd_Box b;BRepBndLib::AddOptimal(s,b);if(b.IsVoid())throw std::runtime_error("shape has empty bounds");double x0,y0,z0,x1,y1,z1;b.Get(x0,y0,z0,x1,y1,z1);return {x0,y0,z0,x1,y1,z1};}
 Mesh tessellate(const TopoDS_Shape& shape,double tolerance){
