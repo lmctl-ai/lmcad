@@ -10,7 +10,7 @@ host = os.environ['LMCAD_HOST']
 schema = str(Path('schema/lmcad.dsl.json').resolve())
 csv = work / 'three.csv'
 csv.write_text(Path('examples/data/keyframes.csv').read_text() + '2.0,2.0,1.0,0.0,0.2,0.9,0.1\n')
-source = Path('examples/tween.lms').read_text().replace('../schema/lmcad.dsl.json', schema).replace('examples/data/keyframes.csv', str(csv)).replace('build/tween-', str(work / 'frame-'))
+source = Path('examples/tween.lms').read_text().replace('../schema/lmcad.dsl.json', schema).replace('examples/data/keyframes.csv', str(csv)).replace('build/tween-', str(work / 'frame-')).replace('build/tween.apng', str(work / 'multi.apng'))
 
 def run(name, text):
     path = work / (name + '.lms'); output = work / (name + '.dslb')
