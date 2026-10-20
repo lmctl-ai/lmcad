@@ -144,15 +144,15 @@ void print_schema_summary(dslvm::Registry& reg){
 int main(int argc,char** argv){
 #ifdef _WIN32
   // MSVCRT text mode would translate \n to \r\n on stdout/stderr, breaking
-  // --schema --json byte identity and the one-line JSON result protocol.
+  // --dsl-schema --json byte identity and the one-line JSON result protocol.
   _setmode(_fileno(stdout), _O_BINARY);
   _setmode(_fileno(stderr), _O_BINARY);
 #endif
   Host host;
   dslvm::Registry reg;
   register_host(reg,host);
-  const std::string usage="usage: lmcad --schema [--json] | --dsl-signatures | --dsl FILE [FILE ...]\n";
-  if(argc>=2&&std::string(argv[1])=="--schema"){
+  const std::string usage="usage: lmcad --dsl-schema [--json] | --dsl-signatures | --dsl FILE [FILE ...]\n";
+  if(argc>=2&&std::string(argv[1])=="--dsl-schema"){
     if(argc==2){print_schema_summary(reg);return std::cout?0:4;}
     if(argc==3&&std::string(argv[2])=="--json"){
       std::cout.write(reinterpret_cast<const char*>(lmcad::embedded_schema),static_cast<std::streamsize>(lmcad::embedded_schema_size));

@@ -35,7 +35,7 @@ for failure in [fail,str(work/'missing.dslb')]:
  assert len(records)==3 and [x['ok'] for x in records]==[True,True,False],r
  assert records[-1]['phase']==('run' if failure==fail else 'load'),r
  assert mesh.exists(),'completed output must survive a later failure'
-for invalid in ['--schema','']:
+for invalid in ['--dsl-schema','']:
  r=run(later,invalid)
  assert r.returncode==2 and not marker.exists() and not r.stdout,r
 print('shared scene, ordered success/errors, stop on failure, and upfront CLI validation pass')

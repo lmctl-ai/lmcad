@@ -9,7 +9,7 @@
 - `scripts/lmscript-source.sh` is an optional adapter for compiler-source development. It requires an explicit `LMSCRIPT_SOURCE`
   path and imports that compiler without copying it into this repository.
 - `sdk.lock` pins the C++ runtime commit and SHA-256 of `cpp/dslvm.hpp`. `scripts/sync-sdk.sh --verify` checks the vendored file.
-- CMake embeds the exact schema bytes. `lmcad --schema --json` prints them; plain `--schema` prints a registry-derived summary.
+- CMake embeds the exact schema bytes. `lmcad --dsl-schema --json` prints them; plain `--dsl-schema` prints a registry-derived summary.
   `--dsl-signatures` prints canonical host declarations for comparison with compiler output.
 - `lmcad --dsl A.dslb B.dslb` runs programs in order with the same schema and host state. The old external-schema CLI form is
   not supported.

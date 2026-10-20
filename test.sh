@@ -42,12 +42,12 @@ for example in still-life box-stl loop-row tween plate-with-holes brick vase gly
 done
 ok "11 examples compile with $COMPILER_SOURCE as bytecode v5"
 
-"$HOST" --schema --json >"$WORK/embedded-schema.json" || fail "embedded schema JSON print"
+"$HOST" --dsl-schema --json >"$WORK/embedded-schema.json" || fail "embedded schema JSON print"
 cmp schema/lmcad.dsl.json "$WORK/embedded-schema.json" || fail "embedded schema differs from source bytes"
-ok "--schema --json prints byte-identical embedded schema bytes"
-"$HOST" --schema >"$WORK/schema-summary.txt" || fail "schema summary print"
+ok "--dsl-schema --json prints byte-identical embedded schema bytes"
+"$HOST" --dsl-schema >"$WORK/schema-summary.txt" || fail "schema summary print"
 python3 tests/schema-cli.py "$HOST"
-ok "--schema summary lists every canonical registry member"
+ok "--dsl-schema summary lists every canonical registry member"
 diff -u <("$LMSCRIPT" --dsl-signatures schema/lmcad.dsl.json) <("$HOST" --dsl-signatures) || fail "host/compiler signatures differ"
 ok "typed registry signatures match compiler schema signatures"
 
@@ -137,9 +137,9 @@ ok "CAD PNG/STL determinism, closed oriented surfaces, and approximate mesh volu
 set +e; out="$("$HOST" 2>&1)"; code=$?; set -e
 [ "$code" = 2 ] && [[ "$out" == *'usage: lmcad'* ]] || fail "bad args refusal (exit $code): $out"
 ok "bad arguments refused (exit 2)"
-set +e; out="$("$HOST" --schema schema/lmcad.dsl.json 2>&1)"; code=$?; set -e
+set +e; out="$("$HOST" --dsl-schema schema/lmcad.dsl.json 2>&1)"; code=$?; set -e
 [ "$code" = 2 ] && [[ "$out" == *'usage: lmcad'* ]] || fail "removed schema-file option accepted (exit $code): $out"
-ok "old --schema FILE input option refused (exit 2)"
+ok "--dsl-schema FILE form refused (exit 2)"
 
 cat > "$WORK/no-camera.lms" <<EOF2
 p = _dsl_ schema="$SCHEMA_PATH";

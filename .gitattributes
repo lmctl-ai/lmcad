@@ -1,4 +1,4 @@
 # Windows checkouts must not convert to CRLF: sdk.lock pins the vendored
-# header by sha256 and --schema --json is asserted byte-identical.
+# header by sha256 and --dsl-schema --json is asserted byte-identical.
 # text=auto keeps committed binaries (PNG/STL fixtures) untouched.
 * text=auto eol=lf
