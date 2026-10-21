@@ -151,7 +151,9 @@ int main(int argc,char** argv){
   Host host;
   dslvm::Registry reg;
   register_host(reg,host);
-  const std::string usage="usage: lmcad --dsl-schema [--json] | --dsl-signatures | --dsl FILE [FILE ...]\n";
+  const std::string usage="usage: lmcad --version | --dsl-schema [--json] | --dsl-signatures | --dsl FILE [FILE ...]\n";
+  // "lmcad X.Y.Z": lmscript install="github:...@latest" compares this with the release tag.
+  if(argc==2&&std::string(argv[1])=="--version"){std::cout<<"lmcad " LMCAD_VERSION "\n";return std::cout?0:4;}
   if(argc>=2&&std::string(argv[1])=="--dsl-schema"){
     if(argc==2){print_schema_summary(reg);return std::cout?0:4;}
     if(argc==3&&std::string(argv[2])=="--json"){

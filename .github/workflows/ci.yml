@@ -406,6 +406,11 @@ jobs:
           pattern: lmcad-*
           path: dist
           merge-multiple: true
+      - name: tag matches lmcad --version (lmscript @latest compares them)
+        run: |
+          chmod +x dist/lmcad-linux-x64
+          got="$(dist/lmcad-linux-x64 --version)"
+          test "$got" = "lmcad ${GITHUB_REF_NAME#v}" || { echo "::error::tag $GITHUB_REF_NAME but binary says '$got' (bump project VERSION in CMakeLists.txt)"; exit 1; }
       - name: attach third-party notices and private npm layout
         run: |
           cp LICENSE dist/LICENSE
