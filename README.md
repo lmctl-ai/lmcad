@@ -44,7 +44,7 @@ For a local script, declare the released host with `cli="lmcad" install="github:
 
 ## Learn and download
 
-- [Tool book](https://lmctl.com/tools/lmcad/) · [Get started](https://lmctl.com/tools/lmcad/get_started.html) · [API guide](docs/LLM_GUIDE.md)
+- [Tool book](https://lmctl.com/tools/lmcad/) · [Get started](https://lmctl.com/tools/lmcad/get_started.html) · [API guide](https://lmctl.com/tools/lmcad/guide.html)
 - [Release downloads](https://github.com/lmctl-ai/lmcad/releases) · [Example source](examples/README.md)
 
 Regenerate all README artwork and example previews with `docs/readme/render.sh`. Its lmscript source files live in `docs/readme/`.
