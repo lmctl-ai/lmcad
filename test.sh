@@ -36,11 +36,11 @@ cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMCAD_OCCT_PREF
 cmake --build "$BUILD_DIR" -j3
 ok "host and unit test build"
 
-for example in still-life box-stl loop-row tween plate-with-holes brick vase glyph-field section-view mug turntable; do
+for example in still-life box-stl box-volume loop-row tween plate-with-holes brick vase glyph-field section-view mug turntable; do
   "$LMSCRIPT" "examples/$example.lms" "build/$example.dslb" >"$WORK/$example.log" || fail "$example compile with $COMPILER_SOURCE"
   [ "$(od -An -t u1 -j 5 -N 1 "build/$example.dslb" | tr -d ' ')" = 5 ] || fail "$example was not compiled as bytecode v5"
 done
-ok "11 examples compile with $COMPILER_SOURCE as bytecode v5"
+ok "12 examples compile with $COMPILER_SOURCE as bytecode v5"
 
 want_version="lmcad $(sed -n 's/^project(lmcad VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
 [ "$("$HOST" --version)" = "$want_version" ] || fail "--version prints $want_version"
@@ -59,6 +59,7 @@ ok "typed registry signatures match compiler schema signatures"
 rm -f build/tween-*.png
 "$HOST" --dsl build/still-life.dslb || fail "still-life run"
 "$HOST" --dsl build/box-stl.dslb || fail "box STL run"
+"$HOST" --dsl build/box-volume.dslb || fail "box volume run"
 "$HOST" --dsl build/loop-row.dslb || fail "loop row run"
 "$HOST" --dsl build/tween.dslb || fail "tween run"
 "$HOST" --dsl build/plate-with-holes.dslb || fail "plate with holes run"
@@ -88,15 +89,16 @@ center=raw[(h//2)*stride+1+3*(w//2):(h//2)*stride+4+3*(w//2)]; assert center != 
 frames=sorted(bdir.glob('tween-*.png')); assert len(frames)==30,len(frames)
 hashes=[hashlib.sha256(p.read_bytes()).digest() for p in frames]; assert len(set(hashes))==30
 assert (bdir/'loop-row.png').stat().st_size>1000
+box_volume=(bdir/'box-volume.png').read_bytes(); assert box_volume[:8]==b'\x89PNG\r\n\x1a\n'; assert struct.unpack_from('>II',box_volume,16)==(320,240)
 for name in ('plate-with-holes','brick','vase','glyph-field','section-view','mug'):
     image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
     ww,hh=struct.unpack_from('>II',image,16); expected=(500,375) if name=='mug' else (560,420) if name=='vase' else (720,540); assert (ww,hh)==expected,(name,ww,hh)
     facets=(bdir/f'{name}.stl').read_bytes(); count=struct.unpack_from('<I',facets,80)[0]; assert count>(10 if name=='section-view' else 100) and len(facets)==84+count*50
 for name in ('section-view','mug'):
     image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
-print(f'PNG/PPM/OBJ valid; CAD PNG dimensions include reduced vase/mug renders, STL box facets={n}, CAD STL facets checked, tween frames={len(frames)}, unique={len(set(hashes))}')
+print(f'PNG/PPM/OBJ valid; box volume PNG=320x240; CAD PNG dimensions include reduced vase/mug renders, STL box facets={n}, CAD STL facets checked, tween frames={len(frames)}, unique={len(set(hashes))}')
 PY
-ok "PNG dimensions/pixels, STL facets, CAD exports, loop render, glyph field, and 30 distinct tween frames"
+ok "PNG dimensions/pixels, volume assertion, STL facets, CAD exports, loop render, glyph field, and 30 distinct tween frames"
 "$APNG" build/tween.apng 0 "$WORK/tween-apng-first.png" || fail "extract tween APNG frame 0"
 cmp build/tween-0.png "$WORK/tween-apng-first.png" || fail "APNG first frame differs from PNG render"
 "$APNG" build/tween.apng 15 "$WORK/tween-apng-middle.png" || fail "extract tween APNG middle frame"
