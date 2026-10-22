@@ -5,3 +5,5 @@
 - `plate-with-holes.lms` Cuts eight through-holes, checks the plate volume, and exports PNG and STL.
 
 The test script compiles and runs these examples, checks the box PNG dimensions and volume assertion, verifies the loop render, and validates the plate render and mesh.
+- `still-life.lms` Renders a box, sphere, and cylinder together in one lit scene.
+- `mug.lms` Revolves a profile into a hollow mug and joins a curved handle.

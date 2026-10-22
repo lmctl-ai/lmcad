@@ -1,10 +1,59 @@
-# lmcad
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/readme/hero-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/readme/hero-light.png">
+    <img src="docs/readme/hero-light.png" alt="A rendered aluminum mounting plate with eight clean through-holes, made by lmcad" width="100%">
+  </picture>
+</p>
 
-## Status
+**lmcad turns parametric lmscript into solid geometry, rendered PNGs, and STL meshes.**
 
-Experimental. The native CLI, schema, and example set are evolving; bytecode v5 and schema v2 are required.
+[![Latest release](https://img.shields.io/github/v/release/lmctl-ai/lmcad?label=release)](https://github.com/lmctl-ai/lmcad/releases)
+[![CI](https://github.com/lmctl-ai/lmcad/actions/workflows/ci.yml/badge.svg)](https://github.com/lmctl-ai/lmcad/actions/workflows/ci.yml)
 
-`lmcad` is a headless C++ host for lmscript DSL bytecode. It embeds the exact bytes of [`schema/lmcad.dsl.json`](schema/lmcad.dsl.json), vendors the pinned header-only [`cpp-dsl-sdk`](cpp/dslvm.hpp), and uses OpenCASCADE for solid modeling. OCCT shapes are tessellated into lmcad's mesh; the in-tree rasterizer, PNG/PPM writers, and STL/OBJ exporters consume that mesh. The release executable is fully statically linked and has no runtime shared-library dependencies. The project is licensed under MIT; third-party terms and static relinking materials are listed in `THIRD_PARTY_NOTICES.md` and the release assets.
+## Made with lmcad
+
+| Measured box | Repeated geometry |
+| --- | --- |
+| ![Rendered box](docs/readme/gallery/box-volume.png) | ![Seven-box row](docs/readme/gallery/loop-row.png) |
+| One solid with a checked volume. [Source](examples/box-volume.lms) · [example book](https://lmctl.com/tools/lmcad/examples/box-volume.html) | A range loop places seven boxes. [Source](examples/loop-row.lms) · [example book](https://lmctl.com/tools/lmcad/examples/loop-row.html) |
+
+| Lit still life | Revolved and joined solids |
+| --- | --- |
+| ![Lit scene with box, sphere and cylinder](docs/readme/gallery/still-life.png) | ![Rendered handled ceramic mug](docs/readme/gallery/mug.png) |
+| Three primitives in one scene. [Source](examples/still-life.lms) · [example book](https://lmctl.com/tools/lmcad/examples/still-life.html) | A hollow, filleted mug with a joined handle. [Source](examples/mug.lms) · [example book](https://lmctl.com/tools/lmcad/examples/mug.html) |
+
+## How it works
+
+The flow below is drawn with lmdraw from [docs/readme/architecture.lms](docs/readme/architecture.lms). lmscript compiles against lmcad's declared schema; the native host uses OpenCASCADE to build solids and export images or meshes.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/architecture.png">
+  <img src="docs/readme/architecture.png" alt="LMScript source and the lmcad schema flow through OpenCASCADE and the mesh renderer to PNG or STL output" width="100%">
+</picture>
+
+## Quick start
+
+```sh
+npm install -g @lmctl-ai/lmctl
+lmctl init
+lmctl autorun https://lmctl.com/tools/lmcad/lmcad_solo.lms
+```
+
+For a local script, declare the released host with `cli="lmcad" install="github:lmctl-ai/lmcad@latest"` and follow the [get started guide](https://lmctl.com/tools/lmcad/get_started.html).
+
+## Learn and download
+
+- [Tool book](https://lmctl.com/tools/lmcad/) · [Get started](https://lmctl.com/tools/lmcad/get_started.html) · [API guide](docs/LLM_GUIDE.md)
+- [Release downloads](https://github.com/lmctl-ai/lmcad/releases) · [Example source](examples/README.md)
+
+Regenerate all README artwork and example previews with `docs/readme/render.sh`. Its lmscript source files live in `docs/readme/`.
+
+## License and company
+
+lmcad-authored code is MIT licensed; see [`LICENSE`](LICENSE). Third-party terms are listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Made by **Lattice Systems LLC**.
+
+---
 
 ## Build OpenCASCADE once
 
