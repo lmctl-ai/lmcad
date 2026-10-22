@@ -49,12 +49,6 @@ For a local script, declare the released host with `cli="lmcad" install="github:
 
 Regenerate all README artwork and example previews with `docs/readme/render.sh`. Its lmscript source files live in `docs/readme/`.
 
-## License and company
-
-lmcad-authored code is MIT licensed; see [`LICENSE`](LICENSE). Third-party terms are listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Made by **Lattice Systems LLC**.
-
----
-
 ## Build OpenCASCADE once
 
 OCCT 8.0.1 is a native build dependency. On this aarch64 Linux setup, the clean static geometry build takes about 16 minutes and peaks around 386 MiB RSS. The configured set disables Draw, Visualization, ApplicationFramework and DataExchange; there is no X11, OpenGL, Tcl, FreeType or TBB dependency. The prefix is reused by lmcad and fresh clones.
@@ -160,3 +154,5 @@ examples retain their separate licenses and notices listed in
 includes `LICENSE`, `THIRD_PARTY_NOTICES`, the relevant full license texts, and
 OCCT relinking instructions and object files. The npm package layouts declare MIT and `private: true`; the workflow does not
 publish them.
+
+Made by **Lattice Systems LLC**.
