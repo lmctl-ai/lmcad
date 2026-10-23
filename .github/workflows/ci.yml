@@ -445,6 +445,10 @@ jobs:
           name: npm-packages
           path: npm-packages/
           if-no-files-found: error
+      - name: generate checksums for platform binaries
+        run: |
+          cd dist
+          sha256sum lmcad-linux-x64 lmcad-linux-arm64 lmcad-macos-arm64 lmcad-macos-x64 lmcad-windows-x64.exe > SHA256SUMS
       - name: attach binaries and notices to GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
