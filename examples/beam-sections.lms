@@ -61,7 +61,9 @@ scene.camera(30.0, 60.0, 420.0, 860.0, -40.0, 50.0, 0.0);
 scene.render_ppm("build/beam-sections-3d.ppm", 900, 380);
 end _dsl_
 savedsl(cad, "build/beam-sections-3d.dslb");
-r = system ${dsl_cli(cad)} --dsl build/beam-sections-3d.dslb;
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(cad), ["--dsl", "build/beam-sections-3d.dslb"]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
 assert(r.code == 0);
 
 p = _dsl_ cli="lmplot" install="github:lmctl-ai/lmplot@latest";
@@ -118,6 +120,8 @@ plot.cmd("unset multiplot");
 plot.close();
 end _dsl_
 savedsl(p, out);
-r = system ${dsl_cli(p)} --dsl ${out};
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
 assert(r.code == 0);
 println("wrote images/beam-sections.png");

@@ -23,12 +23,15 @@ for (frame in range(0, 36)) {
 movie.finish();
 end _dsl_
 savedsl(p, out);
-r = system ${dsl_cli(p)} --dsl ${out};
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
 assert(r.code == 0);
 println("wrote build/turntable.apng");
-g = system ffmpeg -y -loglevel error -i build/turntable.apng -vf "split[a][b];[a]palettegen=max_colors=64[p];[b][p]paletteuse=dither=none" -loop 0 images/turntable.gif;
-if (g.code == 0) {
+if (which("ffmpeg") != null) {
+  g = system ffmpeg -y -loglevel error -i build/turntable.apng -vf "split[a][b];[a]palettegen=max_colors=64[p];[b][p]paletteuse=dither=none" -loop 0 images/turntable.gif;
+  assert(g.code == 0);
   println("wrote images/turntable.gif");
 } else {
-  println("ffmpeg not available: skipped images/turntable.gif (build/turntable.apng is the animation)");
+  println("ffmpeg not found: skipped images/turntable.gif (build/turntable.apng is the animation)");
 }

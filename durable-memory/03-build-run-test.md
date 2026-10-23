@@ -25,8 +25,11 @@ key/fill lighting, ambient light, fitted camera framing, and 2x supersampling. T
 ## Examples and README images (2026-10-23)
 
 All examples in `examples/*.lms` are self-executing (the lmplot shape): `out = ARGV...; mkdir("images"); mkdir("build");
-p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest"; ... end _dsl_ savedsl(p, out); r = system ${dsl_cli(p)} --dsl ${out};
-assert(r.code == 0);`. Pictures go to `./images/<name>.png|gif`; STL, PPM, APNG, frames and `keyframes.csv` (tween writes it
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest"; ... end _dsl_ savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000); if (r.code != 0) { println(r.stderr + r.stdout); } assert(r.code == 0);`.
+The function form matters: lmscript `system` kills the child after 60 s by default (code null, timed_out true), which failed
+buckyball on the slower linux-arm64 runner, and the shorthand hides the host's error JSON. A missing executable makes `system`
+throw (spawn ENOENT) rather than return a code, so optional tools are guarded with `which("ffmpeg") != null`. Pictures go to `./images/<name>.png|gif`; STL, PPM, APNG, frames and `keyframes.csv` (tween writes it
 with `write_file`) go to `./build/`. No example reads repository files, so `lmctl autorun <raw URL>` works from an empty directory.
 There are 12 story examples (README gallery, grouped by theme) and 8 basics (examples/README.md); see 06-reference-examples.md.
 

@@ -57,7 +57,8 @@ scene.fit_camera(42.0, 1.2);
 scene.render_png("images/box.png", 640, 480);
 end _dsl_
 savedsl(p, out);
-r = system ${dsl_cli(p)} --dsl ${out};
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);   # run with the same host; system() defaults to a 60 s limit
+if (r.code != 0) { println(r.stderr + r.stdout); }
 assert(r.code == 0);
 println("wrote images/box.png");
 ```
