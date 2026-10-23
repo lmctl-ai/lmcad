@@ -1,7 +1,7 @@
-out = ARGV.len() > 0 ? ARGV[0] : "build/ball-stick.dslb";
-p = _dsl_ schema="../schema/lmcad.dsl.json";
 // A compact water molecule: endpoint tubes make the bond geometry independent
 // of the coordinate system, which also suits trajectory segments.
+out = ARGV.len() > 0 ? ARGV[0] : "build/ball-stick.dslb";
+p = _dsl_ schema="../schema/lmcad.dsl.json";
 let oxygen = material().color(0.88, 0.08, 0.06).roughness(0.38).specular(0.35);
 let hydrogen = material().color(0.86, 0.90, 0.96).roughness(0.42).specular(0.25);
 let bond = material().color(0.48, 0.52, 0.60).roughness(0.60);
