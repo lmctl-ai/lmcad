@@ -34,6 +34,7 @@
 #include <TopoDS_Face.hxx>
 #include <gp_Ax1.hxx>
 #include <gp_Dir.hxx>
+#include <gp_Vec.hxx>
 #include <gp_Trsf.hxx>
 #include <gp_GTrsf.hxx>
 #include <gp_Mat.hxx>
@@ -89,6 +90,15 @@ void require_sketch(const Sketch& s){
 TopoDS_Shape box(double x,double y,double z){dimension(x);dimension(y);dimension(z);gp_Trsf t;t.SetTranslation(gp_Vec(-x/2,-y/2,-z/2));return BRepBuilderAPI_Transform(BRepPrimAPI_MakeBox(x,y,z).Shape(),t,true).Shape();}
 TopoDS_Shape sphere(double r){dimension(2*r);return BRepPrimAPI_MakeSphere(r).Shape();}
 TopoDS_Shape cylinder(double r,double h){dimension(2*r);dimension(h);return BRepPrimAPI_MakeCylinder(gp_Ax2(gp_Pnt(0,-h/2,0),gp_Dir(0,1,0)),r,h).Shape();}
+TopoDS_Shape tube_between(Vec3 start,Vec3 end,double r){
+  dimension(2*r);
+  for(double v:{start.x,start.y,start.z,end.x,end.y,end.z})if(!std::isfinite(v)||std::abs(v)>max_coordinate)
+    throw std::runtime_error("tube endpoints exceed host limits");
+  gp_Vec delta(end.x-start.x,end.y-start.y,end.z-start.z);
+  const double length=delta.Magnitude();
+  dimension(length);
+  return checked(BRepPrimAPI_MakeCylinder(gp_Ax2(gp_Pnt(start.x,start.y,start.z),gp_Dir(delta)),r,length).Shape(),"tube");
+}
 TopoDS_Shape boolean_union(const TopoDS_Shape& a,const TopoDS_Shape& b){BRepAlgoAPI_Fuse op(a,b);op.Build();if(!op.IsDone())throw std::runtime_error("union failed");return checked(op.Shape(),"union");}
 TopoDS_Shape cut(const TopoDS_Shape& a,const TopoDS_Shape& b){BRepAlgoAPI_Cut op(a,b);op.Build();if(!op.IsDone())throw std::runtime_error("cut failed");return checked(op.Shape(),"cut");}
 TopoDS_Shape intersect(const TopoDS_Shape& a,const TopoDS_Shape& b){BRepAlgoAPI_Common op(a,b);op.Build();if(!op.IsDone())throw std::runtime_error("intersection failed");return checked(op.Shape(),"intersection");}

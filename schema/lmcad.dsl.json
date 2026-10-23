@@ -34,6 +34,21 @@
             "returns": "Shape"
           }
         ],
+        "tube_between": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "Material"
+            ],
+            "returns": "Shape"
+          }
+        ],
         "camera": [
           {
             "params": [

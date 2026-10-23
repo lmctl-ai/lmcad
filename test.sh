@@ -36,7 +36,7 @@ cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMCAD_OCCT_PREF
 cmake --build "$BUILD_DIR" -j3
 ok "host and unit test build"
 
-for example in still-life box-stl box-volume loop-row tween plate-with-holes brick vase glyph-field section-view mug turntable; do
+for example in still-life box-stl box-volume loop-row tween plate-with-holes brick vase glyph-field section-view mug turntable ball-stick; do
   "$LMSCRIPT" "examples/$example.lms" "build/$example.dslb" >"$WORK/$example.log" || fail "$example compile with $COMPILER_SOURCE"
   [ "$(od -An -t u1 -j 5 -N 1 "build/$example.dslb" | tr -d ' ')" = 5 ] || fail "$example was not compiled as bytecode v5"
 done
@@ -61,6 +61,7 @@ rm -f build/tween-*.png
 "$HOST" --dsl build/box-stl.dslb || fail "box STL run"
 "$HOST" --dsl build/box-volume.dslb || fail "box volume run"
 "$HOST" --dsl build/loop-row.dslb || fail "loop row run"
+"$HOST" --dsl build/ball-stick.dslb || fail "ball-stick run"
 "$HOST" --dsl build/tween.dslb || fail "tween run"
 "$HOST" --dsl build/plate-with-holes.dslb || fail "plate with holes run"
 "$HOST" --dsl build/brick.dslb || fail "brick run"
@@ -89,6 +90,7 @@ center=raw[(h//2)*stride+1+3*(w//2):(h//2)*stride+4+3*(w//2)]; assert center != 
 frames=sorted(bdir.glob('tween-*.png')); assert len(frames)==30,len(frames)
 hashes=[hashlib.sha256(p.read_bytes()).digest() for p in frames]; assert len(set(hashes))==30
 assert (bdir/'loop-row.png').stat().st_size>1000
+ball_stick=(bdir/'ball-stick.png').read_bytes(); assert ball_stick[:8]==b'\x89PNG\r\n\x1a\n'; assert struct.unpack_from('>II',ball_stick,16)==(640,480)
 box_volume=(bdir/'box-volume.png').read_bytes(); assert box_volume[:8]==b'\x89PNG\r\n\x1a\n'; assert struct.unpack_from('>II',box_volume,16)==(320,240)
 for name in ('plate-with-holes','brick','vase','glyph-field','section-view','mug'):
     image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'

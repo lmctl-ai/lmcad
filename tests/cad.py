@@ -34,6 +34,14 @@ for name,points,error in [
   body='let sk=scene.sketch(); sk'+''.join(f'.point({x}.0,{y}.0)' for x,y in points)+f'.close(); scene.{operation}({args});'
   run(name+operation,body,error)
 run('valid-extrusion','let sk=scene.sketch().point(0.0,0.0).point(2.0,0.0).point(2.0,3.0).point(0.0,3.0).close(); let s=scene.extrude(sk,4.0,material()); scene.assert_close(s.volume(),24.0,0.000001);')
+run('tube-between','let s=scene.tube_between(-1.0,0.0,0.0,2.0,0.0,0.0,0.25,material()); scene.assert_close(s.volume(),3.0 * 3.141592653589793 * 0.25 * 0.25,0.000001); scene.assert_close(s.min_x(),-1.0,0.000001); scene.assert_close(s.max_x(),2.0,0.000001);')
+run('tube-between-diagonal','let s=scene.tube_between(1.0,2.0,3.0,-1.0,4.0,5.0,0.2,material()); scene.assert_close(s.volume(),sqrt(6.0) * 3.141592653589793 * 0.2 * 0.2,0.000001); scene.assert_close(s.min_x(),-1.0,0.000001); scene.assert_close(s.max_z(),5.0,0.000001);')
+run('tube-between-zero-length','scene.tube_between(0.0,0.0,0.0,0.0,0.0,0.0,0.25,material());','CAD dimension')
+for expression,error in [
+ ('scene.tube_between(0.0,0.0,0.0,1.0,0.0,0.0,0.0,material());','positive'),
+ ('scene.tube_between(0.0,0.0,0.0,1.0,0.0,0.0,-0.1,material());','positive'),
+ ('scene.tube_between(sqrt(-1.0),0.0,0.0,1.0,0.0,0.0,0.1,material());','finite'),
+]: run('tube-between-invalid',expression,error)
 print('CAD sketch validation and valid extrusion pass')
 
 for expression in ['scene.sphere(1000000000000000.0,material())','scene.cylinder(1000000000.0,1.0,material())','scene.box(0.0000000001,1.0,1.0,material())']:

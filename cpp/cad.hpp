@@ -10,6 +10,7 @@ struct Sketch { std::vector<gp_Pnt2d> points; bool closed=false; };
 TopoDS_Shape box(double x,double y,double z);
 TopoDS_Shape sphere(double radius);
 TopoDS_Shape cylinder(double radius,double height);
+TopoDS_Shape tube_between(Vec3 start,Vec3 end,double radius);
 TopoDS_Shape boolean_union(const TopoDS_Shape&,const TopoDS_Shape&);
 TopoDS_Shape cut(const TopoDS_Shape&,const TopoDS_Shape&);
 TopoDS_Shape intersect(const TopoDS_Shape&,const TopoDS_Shape&);
