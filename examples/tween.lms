@@ -1,5 +1,11 @@
-p = _dsl_ schema="../schema/lmcad.dsl.json";
-let keys = read_keyframes_csv("examples/data/keyframes.csv");
+# Keyframe tween: a sphere eases between two CSV keyframes in position and
+# colour; 30 numbered PNG frames plus a looping APNG.
+out = ARGV.len() > 0 ? ARGV[0] : "build/tween.dslb";
+mkdir("build");
+# Two keyframes (time, position, colour); the host reads them as CSV.
+write_file("build/keyframes.csv", "t,x,y,z,r,g,b\n0.0,-1.5,0.0,0.0,0.95,0.18,0.12\n1.0,1.5,0.7,0.0,0.12,0.55,0.95\n");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+let keys = read_keyframes_csv("build/keyframes.csv");
 let mat = material().specular(0.4).shininess(56.0);
 let shape = scene.sphere(1.15, mat);
 scene.camera(38.0, 0.0, 2.8, 8.0, 0.0, 0.0, 0.0);
@@ -32,4 +38,7 @@ for (segment in range(0, keys.len() - 1)) {
 }
 movie.finish();
 end _dsl_
-savedsl(p, "build/tween.dslb");
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote build/tween.apng and build/tween-0.png .. build/tween-29.png");

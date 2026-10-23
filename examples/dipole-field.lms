@@ -1,0 +1,63 @@
+# Electric field of a dipole, sampled on a plane and drawn as 3D glyphs.
+# Charges +q and -q sit 2 units apart. At each grid point the field is the
+# Coulomb sum E = q (r - r+) / |r - r+|^3 - q (r - r-) / |r - r-|^3; a tube
+# points along E (the small bead marks the head) and its colour runs from
+# blue (weak) through teal to amber (strong) with |E|^(1/3). Field lines leave + (red)
+# and end on - (blue). Check: far out on the bisector the exact sum must
+# match the point-dipole law |E| = p / r^3 (p = 2q); at r = 20 it agrees
+# to better than 0.4 %.
+# Writes images/dipole-field.png (900x600).
+out = ARGV.len() > 0 ? ARGV[0] : "build/dipole-field.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+let q = 1.0;
+let d = 1.0;            # charges at x = -d (+q) and x = +d (-q)
+# far-field check on the bisector (x = 0, z = r): exact vs p / r^3
+let rf = 20.0;
+let rr3 = pow(d * d + rf * rf, 1.5);
+let ex_exact = q * (0.0 + d) / rr3 - q * (0.0 - d) / rr3;
+scene.assert_close(ex_exact / (2.0 * q * d / (rf * rf * rf)), 1.0, 0.004);
+
+scene.background(0.96, 0.97, 0.98);
+scene.supersample(3);
+scene.ambient(0.30);
+scene.directional_light(-0.40, -0.80, -0.45, 0.90);
+scene.fill_light(0.70, -0.20, 0.50, 0.40);
+scene.sphere(0.42, material().color(0.86, 0.16, 0.12).specular(0.6).shininess(50.0)).position(0.0 - d, 0.0, 0.0);
+scene.sphere(0.42, material().color(0.12, 0.30, 0.86).specular(0.6).shininess(50.0)).position(d, 0.0, 0.0);
+scene.box(13.6, 0.04, 9.6, material().color(0.90, 0.91, 0.93).roughness(0.9)).position(0.0, -0.25, 0.0);
+let len = 0.52;
+for (ix in range(0, 17)) {
+  for (iz in range(0, 12)) {
+    let x = -6.4 + 0.8 * float(ix);
+    let z = -4.4 + 0.8 * float(iz);
+    let dx1 = x + d;
+    let dx2 = x - d;
+    let r1 = sqrt(dx1 * dx1 + z * z);
+    let r2 = sqrt(dx2 * dx2 + z * z);
+    if (min(r1, r2) > 0.55) {
+      let ex = q * dx1 / (r1 * r1 * r1) - q * dx2 / (r2 * r2 * r2);
+      let ez = q * z / (r1 * r1 * r1) - q * z / (r2 * r2 * r2);
+      let mag = sqrt(ex * ex + ez * ez);
+      let ux = ex / mag;
+      let uz = ez / mag;
+      let t = clamp((pow(mag, 0.3333) - 0.18) / 0.85, 0.0, 1.0);
+      let u = clamp(2.0 * t, 0.0, 1.0);
+      let v = clamp(2.0 * t - 1.0, 0.0, 1.0);
+      let red = lerp(lerp(0.17, 0.08, u), 0.98, v);
+      let green = lerp(lerp(0.26, 0.62, u), 0.74, v);
+      let blue = lerp(lerp(0.66, 0.60, u), 0.12, v);
+      let m = material().color(red, green, blue).specular(0.35);
+      scene.tube_between(x - 0.5 * len * ux, 0.0, z - 0.5 * len * uz, x + 0.5 * len * ux, 0.0, z + 0.5 * len * uz, 0.05, m);
+      scene.sphere(0.085, m).position(x + 0.5 * len * ux, 0.0, z + 0.5 * len * uz);
+    }
+  }
+}
+scene.camera(30.0, 0.0, 15.5, 12.5, 0.0, -0.8, 0.4);
+scene.render_png("images/dipole-field.png", 900, 600);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote images/dipole-field.png");

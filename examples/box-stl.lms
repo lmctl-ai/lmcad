@@ -1,10 +1,14 @@
-# A minimal mesh export. The expected binary STL contains 12 box facets.
+# A minimal mesh export for 3D printing or another CAD tool. The binary STL
+# has exactly 12 facets: two triangles per box face.
 out = ARGV.len() > 0 ? ARGV[0] : "build/box-stl.dslb";
-p = _dsl_ schema="../schema/lmcad.dsl.json";
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
 let mat = material().color(0.7, 0.75, 0.8);
 let box = scene.box(2.0, 1.0, 1.5, mat).name("box");
 box.translate(0.25, 0.0, 0.0);
 scene.export_stl("build/box.stl");
 end _dsl_
 savedsl(p, out);
-println(f"wrote {out}");
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote build/box.stl");

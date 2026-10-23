@@ -17,8 +17,12 @@ def compiler_cmd(c):
 host = os.environ['LMCAD_HOST']
 schema = str(Path('schema/lmcad.dsl.json').resolve().as_posix())
 csv = work / 'three.csv'
-csv.write_text(Path('examples/data/keyframes.csv').read_text() + '2.0,2.0,1.0,0.0,0.2,0.9,0.1\n')
-source = Path('examples/tween.lms').read_text().replace('../schema/lmcad.dsl.json', schema).replace('examples/data/keyframes.csv', csv.as_posix()).replace('build/tween-', (work / 'frame-').as_posix()).replace('build/tween.apng', (work / 'multi.apng').as_posix())
+csv.write_text(Path('tests/data/keyframes.csv').read_text() + '2.0,2.0,1.0,0.0,0.2,0.9,0.1\n')
+# Run only the example's _dsl_ block, compiled against the repository schema
+# (the example itself binds the released host and executes itself).
+example = Path('examples/tween.lms').read_text()
+body = example.split('install="github:lmctl-ai/lmcad@latest";\n', 1)[1].split('end _dsl_', 1)[0]
+source = (f'p = _dsl_ schema={json.dumps(schema)};\n' + body + 'end _dsl_\n').replace('build/keyframes.csv', csv.as_posix()).replace('build/tween-', (work / 'frame-').as_posix()).replace('build/tween.apng', (work / 'multi.apng').as_posix())
 
 def run(name, text):
     path = work / (name + '.lms'); output = work / (name + '.dslb')

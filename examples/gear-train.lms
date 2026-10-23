@@ -1,0 +1,131 @@
+# Spur gear pair, 2:1 reduction. An 18-tooth pinion drives a 36-tooth gear
+# (module 2 mm, 20 degree pressure angle). Every tooth flank is a true involute
+# of the base circle, computed point by point, so the teeth roll on each other
+# at the centre distance a = m (z1 + z2) / 2 = 54 mm with no gap or overlap.
+# The 36-frame loop is seamless (6 tooth pitches); the gear follows at half speed.
+# Writes images/gear-train.gif (animation, needs ffmpeg) and images/gear-train.png.
+out = ARGV.len() > 0 ? ARGV[0] : "build/gear-train.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+scene.background(0.93, 0.95, 0.97);
+scene.supersample(2);
+scene.ambient(0.30);
+scene.directional_light(-0.35, -0.45, -0.85, 1.0);
+scene.fill_light(0.70, 0.30, 0.60, 0.40);
+let steel = material().color(0.55, 0.62, 0.70).specular(0.55).shininess(40.0);
+let brass = material().color(0.86, 0.62, 0.22).specular(0.60).shininess(36.0);
+
+let module = 2.0;
+let z1 = 18;
+let z2 = 36;
+let width = 10.0;
+let pi = 3.14159265358979;
+let cos_alpha = 0.93969262078591;   # cos 20 deg
+let inv_alpha = 0.01490438386;      # tan 20 deg - 20 deg (rad)
+let center_distance = module * float(z1 + z2) / 2.0;
+
+# --- pinion (z1) ---
+let r1 = module * float(z1) / 2.0;
+let rb1 = r1 * cos_alpha;
+let ra1 = r1 + module;
+let rf1 = r1 - 1.25 * module;
+let ta1 = sqrt((ra1 / rb1) * (ra1 / rb1) - 1.0);
+let hb1 = pi / (2.0 * float(z1)) + inv_alpha;
+let s1 = scene.sketch();
+for (k in range(0, z1)) {
+  let c = 2.0 * pi * float(k) / float(z1);
+  let a0 = c - hb1;
+  s1.point(rf1 * cos(a0), rf1 * sin(a0));
+  for (i in range(0, 9)) {
+    let t = ta1 * float(i) / 8.0;
+    let x = rb1 * (cos(t) + t * sin(t));
+    let y = rb1 * (sin(t) - t * cos(t));
+    s1.point(x * cos(a0) - y * sin(a0), x * sin(a0) + y * cos(a0));
+  }
+  let a1 = c + hb1;
+  for (i in range(0, 9)) {
+    let t = ta1 * float(8 - i) / 8.0;
+    let x = rb1 * (cos(t) + t * sin(t));
+    let y = 0.0 - rb1 * (sin(t) - t * cos(t));
+    s1.point(x * cos(a1) - y * sin(a1), x * sin(a1) + y * cos(a1));
+  }
+  s1.point(rf1 * cos(a1), rf1 * sin(a1));
+  let am = c + pi / float(z1);
+  s1.point(rf1 * cos(am), rf1 * sin(am));
+}
+s1.close();
+let pinion = scene.extrude(s1, width, steel).translate(0.0, 0.0, 0.0 - width / 2.0);
+let bore1 = scene.cylinder(4.0, width * 2.0, steel).rotate(pi / 2.0, 0.0, 0.0);
+pinion.cut(bore1);
+bore1.visible(false);
+
+# --- gear (z2) with six lightening holes ---
+let r2 = module * float(z2) / 2.0;
+let rb2 = r2 * cos_alpha;
+let ra2 = r2 + module;
+let rf2 = r2 - 1.25 * module;
+let ta2 = sqrt((ra2 / rb2) * (ra2 / rb2) - 1.0);
+let hb2 = pi / (2.0 * float(z2)) + inv_alpha;
+let s2 = scene.sketch();
+for (k in range(0, z2)) {
+  let c = 2.0 * pi * float(k) / float(z2);
+  let a0 = c - hb2;
+  s2.point(rf2 * cos(a0), rf2 * sin(a0));
+  for (i in range(0, 9)) {
+    let t = ta2 * float(i) / 8.0;
+    let x = rb2 * (cos(t) + t * sin(t));
+    let y = rb2 * (sin(t) - t * cos(t));
+    s2.point(x * cos(a0) - y * sin(a0), x * sin(a0) + y * cos(a0));
+  }
+  let a1 = c + hb2;
+  for (i in range(0, 9)) {
+    let t = ta2 * float(8 - i) / 8.0;
+    let x = rb2 * (cos(t) + t * sin(t));
+    let y = 0.0 - rb2 * (sin(t) - t * cos(t));
+    s2.point(x * cos(a1) - y * sin(a1), x * sin(a1) + y * cos(a1));
+  }
+  s2.point(rf2 * cos(a1), rf2 * sin(a1));
+  let am = c + pi / float(z2);
+  s2.point(rf2 * cos(am), rf2 * sin(am));
+}
+s2.close();
+let gear = scene.extrude(s2, width, brass).translate(0.0, 0.0, 0.0 - width / 2.0);
+let bore2 = scene.cylinder(6.0, width * 2.0, brass).rotate(pi / 2.0, 0.0, 0.0);
+gear.cut(bore2);
+bore2.visible(false);
+for (h in range(0, 6)) {
+  let ah = 2.0 * pi * float(h) / 6.0;
+  let hole = scene.cylinder(5.0, width * 2.0, brass).rotate(pi / 2.0, 0.0, 0.0).translate(19.0 * cos(ah), 19.0 * sin(ah), 0.0);
+  gear.cut(hole);
+  hole.visible(false);
+}
+scene.assert_close(center_distance, 54.0, 0.000001);
+scene.assert_close(r1 + r2, center_distance, 0.000001);
+
+# Mesh phase: pinion tooth on +x faces a gear tooth gap (z2 even -> half pitch).
+gear.position(center_distance, 0.0, 0.0).rotate(0.0, 0.0, pi / float(z2));
+pinion.rotate(0.0, 0.0, 0.0);
+scene.camera(30.0, 34.0, 52.0, 190.0, 34.0, -2.0, 0.0);
+
+let frames = 36;
+let step = (2.0 * pi / float(z1)) / 6.0;      # 1/6 tooth pitch per frame; 36 frames = seamless loop
+let movie = scene.animation("build/gear-train.apng", 720, 420, 16);
+for (f in range(0, frames)) {
+  if (f == 6) { scene.render_png("images/gear-train.png", 900, 525); }
+  movie.add_frame();
+  pinion.rotate(0.0, 0.0, step);
+  gear.rotate(0.0, 0.0, 0.0 - step * float(z1) / float(z2));
+}
+movie.finish();
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote images/gear-train.png");
+g = system ffmpeg -y -loglevel error -i build/gear-train.apng -vf "split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=none" -loop 0 images/gear-train.gif;
+if (g.code == 0) {
+  println("wrote images/gear-train.gif");
+} else {
+  println("ffmpeg not available: skipped images/gear-train.gif (build/gear-train.apng is the animation)");
+}

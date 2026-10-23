@@ -1,5 +1,9 @@
+# Camera turntable: one solid, 36 frames orbiting at 10 degrees per frame,
+# written as a looping APNG by the host (and converted to GIF with ffmpeg).
 out = ARGV.len() > 0 ? ARGV[0] : "build/turntable.dslb";
-p = _dsl_ schema="../schema/lmcad.dsl.json";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
 scene.background(0.055, 0.065, 0.09);
 let bronze = material().color(0.72, 0.38, 0.14).roughness(0.4);
 let body = scene.box(8.0, 2.4, 6.0, bronze);
@@ -19,4 +23,12 @@ for (frame in range(0, 36)) {
 movie.finish();
 end _dsl_
 savedsl(p, out);
-println(f"wrote {out}");
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote build/turntable.apng");
+g = system ffmpeg -y -loglevel error -i build/turntable.apng -vf "split[a][b];[a]palettegen=max_colors=64[p];[b][p]paletteuse=dither=none" -loop 0 images/turntable.gif;
+if (g.code == 0) {
+  println("wrote images/turntable.gif");
+} else {
+  println("ffmpeg not available: skipped images/turntable.gif (build/turntable.apng is the animation)");
+}

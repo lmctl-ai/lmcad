@@ -1,6 +1,12 @@
+# Lightening a mounting plate: eight 13 mm bores through a 120 x 80 x 10 mm
+# aluminium plate (units: cm). The B-rep volume after the cuts is asserted,
+# 85.38 cm^3 = 230.5 g of 6061 (2.70 g/cm^3), 11 % lighter than the blank.
+# Writes images/plate-with-holes.png (900x600) and build/plate-with-holes.stl.
 out = ARGV.len() > 0 ? ARGV[0] : "build/plate-with-holes.dslb";
-p = _dsl_ schema="../schema/lmcad.dsl.json";
-scene.background(0.16, 0.20, 0.27);
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+scene.background(0.96, 0.97, 0.98);
 let alloy = material().color(0.72, 0.78, 0.84).roughness(0.55).specular(0.22).shininess(48.0);
 let plate = scene.box(12.0, 1.0, 8.0, alloy).name("mounting plate");
 for (ix in range(0, 4)) {
@@ -13,13 +19,17 @@ for (ix in range(0, 4)) {
   }
 }
 scene.assert_close(plate.volume(), 85.3814168308665, 0.000001);
-scene.fit_camera(40.0, 1.2);
+scene.assert_close(plate.volume() * 2.70, 230.53, 0.01);                 # grams
+scene.assert_close(96.0 - plate.volume(), 8.0 * 3.14159265358979 * 0.65 * 0.65 * 1.0, 0.000001);
+scene.camera(30.0, 12.0, 13.5, 16.5, 0.3, -0.8, 0.0);
 scene.directional_light(-0.25, -1.0, -0.45, 1.0);
 scene.fill_light(0.8, -0.2, 0.9, 0.18);
 scene.ambient(0.16);
-scene.supersample(6);
-scene.render_png("build/plate-with-holes.png", 720, 540);
+scene.supersample(4);
+scene.render_png("images/plate-with-holes.png", 900, 600);
 scene.export_stl("build/plate-with-holes.stl");
 end _dsl_
 savedsl(p, out);
-println(f"wrote {out}");
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote images/plate-with-holes.png");

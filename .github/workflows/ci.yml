@@ -51,7 +51,7 @@ jobs:
           node-version: 24
       - name: install published lmscript compiler (DSL v5)
         run: |
-          npm install --global @lmctl-ai/lmctl@0.2.347
+          npm install --global @lmctl-ai/lmctl@0.2.401
           scripts/select-compiler.sh | tee compiler.txt
           grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
       - name: restore static OCCT install prefix
@@ -78,6 +78,8 @@ jobs:
         run: scripts/sync-sdk.sh --verify
       - name: build and run tests
         env:
+          # lets lmscript install lmplot for the lmcad + lmplot examples
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LMCAD_OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
           LMCAD_FULL_STATIC: ON
         run: ./test.sh
@@ -120,7 +122,7 @@ jobs:
           node-version: 24
       - name: install published lmscript compiler (DSL v5)
         run: |
-          npm install --global @lmctl-ai/lmctl@0.2.347
+          npm install --global @lmctl-ai/lmctl@0.2.401
           scripts/select-compiler.sh | tee compiler.txt
           grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
       - name: restore static OCCT install prefix
@@ -147,6 +149,8 @@ jobs:
         run: scripts/sync-sdk.sh --verify
       - name: build and run tests
         env:
+          # lets lmscript install lmplot for the lmcad + lmplot examples
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LMCAD_OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
           LMCAD_FULL_STATIC: ON
         run: ./test.sh
@@ -192,7 +196,7 @@ jobs:
           node-version: 24
       - name: install published lmscript compiler (DSL v5)
         run: |
-          npm install --global @lmctl-ai/lmctl@0.2.347
+          npm install --global @lmctl-ai/lmctl@0.2.401
           scripts/select-compiler.sh | tee compiler.txt
           grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
       - name: restore static OCCT install prefix
@@ -219,6 +223,8 @@ jobs:
         run: scripts/sync-sdk.sh --verify
       - name: build and run tests
         env:
+          # lets lmscript install lmplot for the lmcad + lmplot examples
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LMCAD_OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
           LMCAD_FULL_STATIC: OFF
         run: ./test.sh
@@ -261,7 +267,7 @@ jobs:
           node-version: 24
       - name: install published lmscript compiler (DSL v5)
         run: |
-          npm install --global @lmctl-ai/lmctl@0.2.347
+          npm install --global @lmctl-ai/lmctl@0.2.401
           scripts/select-compiler.sh | tee compiler.txt
           grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
       - name: restore static OCCT install prefix
@@ -288,6 +294,8 @@ jobs:
         run: scripts/sync-sdk.sh --verify
       - name: build and run tests
         env:
+          # lets lmscript install lmplot for the lmcad + lmplot examples
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LMCAD_OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
           LMCAD_FULL_STATIC: OFF
         run: ./test.sh
@@ -336,7 +344,7 @@ jobs:
           node-version: 24
       - name: install published lmscript compiler (DSL v5)
         run: |
-          npm install --global @lmctl-ai/lmctl@0.2.347
+          npm install --global @lmctl-ai/lmctl@0.2.401
           scripts/select-compiler.sh | tee compiler.txt
           grep -qx "$(command -v lmscript)" compiler.txt || { echo "published v5 lmscript was not selected"; exit 1; }
       - name: python3 shim (git-bash has none)
@@ -369,6 +377,8 @@ jobs:
         run: scripts/sync-sdk.sh --verify
       - name: build and run tests
         env:
+          # lets lmscript install lmplot for the lmcad + lmplot examples
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LMCAD_OCCT_PREFIX: ${{ runner.temp }}/occt-prefix
           LMCAD_FULL_STATIC: ON
         run: ./test.sh

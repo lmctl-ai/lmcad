@@ -1,6 +1,13 @@
+# A turned vase: a cubic Bezier profile (cm) revolved about the axis and
+# shelled from the top with an 11 mm wall. The B-rep volume of the ceramic is
+# asserted (1708.27 cm^3, 4.1 kg of stoneware at 2.4 g/cm^3) and the
+# capacity, the volume the shell removed, is 5.29 litres.
+# Writes images/vase.png (900x600) and build/vase.stl.
 out = ARGV.len() > 0 ? ARGV[0] : "build/vase.dslb";
-p = _dsl_ schema="../schema/lmcad.dsl.json";
-scene.background(0.16, 0.20, 0.27);
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+scene.background(0.96, 0.97, 0.98);
 let ceramic = material().color(0.48, 0.70, 0.82).roughness(0.30).specular(0.70).shininess(28.0);
 let profile = scene.sketch();
 profile.point(0.0, 0.0).point(5.0, 0.0).point(6.5, 2.0);
@@ -13,14 +20,20 @@ for (i in range(1, 13)) {
 }
 profile.point(0.0, 30.0).close();
 let vase = scene.revolve_y(profile, ceramic).name("turned vase");
+let solid = vase.volume();
 vase.hollow_top(1.1);
+let capacity = solid - vase.volume();
+scene.assert_close(capacity, 5287.73, 0.01);   # 5.29 litres
 scene.assert_close(vase.volume(), 1708.2677036376435, 0.000001);
-scene.fit_camera(38.0, 1.2);
+scene.fit_camera(30.0, 1.05);
 scene.directional_light(-0.25, -1.0, -0.45, 1.0);
 scene.fill_light(0.8, -0.2, 0.9, 0.18);
 scene.ambient(0.18);
-scene.render_png("build/vase.png", 560, 420);
+scene.supersample(3);
+scene.render_png("images/vase.png", 900, 600);
 scene.export_stl("build/vase.stl");
 end _dsl_
 savedsl(p, out);
-println(f"wrote {out}");
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote images/vase.png");

@@ -1,0 +1,79 @@
+# Helical compression spring: rate from geometry, then check it in 3D.
+# Music-wire spring, wire d = 4 mm, mean coil diameter D = 30 mm, 8 active
+# coils plus a closed end coil at each end, G = 79.3 GPa. The textbook rate
+#   k = G d^4 / (8 D^3 n) = 11.75 N/mm
+# means a 200 N load shortens it by F / k = 17.0 mm (2.1 mm per coil). The
+# coil is swept from short tube_between segments; left: free, right: loaded.
+# Writes images/coil-spring.png (900x600).
+out = ARGV.len() > 0 ? ARGV[0] : "build/coil-spring.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+let pi = 3.14159265358979;
+let g_mod = 79300.0;   # N/mm^2
+let wire = 4.0;
+let dm = 30.0;
+let n_active = 8;
+let k = g_mod * pow(wire, 4.0) / (8.0 * pow(dm, 3.0) * float(n_active));
+scene.assert_close(k, 11.7481, 0.0001);
+let load = 200.0;
+let defl = load / k;
+scene.assert_close(defl, 17.0240, 0.0001);
+
+scene.background(0.97, 0.98, 0.99);
+scene.supersample(3);
+scene.ambient(0.26);
+scene.directional_light(-0.45, -0.70, -0.55, 1.0);
+scene.fill_light(0.75, -0.15, 0.40, 0.40);
+let wire_free = material().color(0.62, 0.66, 0.72).specular(0.75).shininess(60.0);
+let wire_load = material().color(0.86, 0.42, 0.16).specular(0.70).shininess(56.0);
+let plate = material().color(0.30, 0.33, 0.38).specular(0.35);
+
+let seg = 16;
+let pitch_free = 11.0;
+for (side in range(0, 2)) {
+  let cx = -32.0 + 64.0 * float(side);
+  let pitch = pitch_free;
+  let mat = wire_free;
+  if (side == 1) {
+    pitch = pitch_free - defl / float(n_active);
+    mat = wire_load;
+  }
+  # total turns: closed end coil (pitch = wire), active coils, closed end coil
+  let y = wire / 2.0;
+  let px = cx + dm / 2.0;
+  let pz = 0.0;
+  let total = (n_active + 2) * seg;
+  for (i in range(1, total + 1)) {
+    let turn = float(i) / float(seg);
+    let step = pitch;
+    if (turn <= 1.0) { step = wire; }
+    if (turn > float(n_active + 1)) { step = wire; }
+    let ny = y + step / float(seg);
+    let a = 2.0 * pi * turn;
+    let nx = cx + dm / 2.0 * cos(a);
+    let nz = dm / 2.0 * sin(a);
+    scene.tube_between(px, y, pz, nx, ny, nz, wire / 2.0, mat);
+    scene.sphere(wire / 2.0, mat).position(nx, ny, nz);
+    px = nx;
+    y = ny;
+    pz = nz;
+  }
+  let height = y + wire / 2.0;
+  scene.cylinder(24.0, 4.0, plate).position(cx, -2.0, 0.0);
+  scene.cylinder(24.0, 4.0, plate).position(cx, height + 2.0, 0.0);
+  if (side == 1) {
+    # load arrow: shaft and a stack of shrinking discs as the head
+    scene.tube_between(cx, height + 34.0, 0.0, cx, height + 12.0, 0.0, 1.6, wire_load);
+    for (j in range(0, 6)) {
+      scene.cylinder(5.0 - 0.8 * float(j), 1.2, wire_load).position(cx, height + 10.0 + 1.2 * float(j), 0.0);
+    }
+  }
+}
+scene.camera(30.0, 0.0, 95.0, 260.0, 0.0, 52.0, 0.0);
+scene.render_png("images/coil-spring.png", 900, 600);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote images/coil-spring.png");

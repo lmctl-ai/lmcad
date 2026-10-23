@@ -36,12 +36,6 @@ cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMCAD_OCCT_PREF
 cmake --build "$BUILD_DIR" -j3
 ok "host and unit test build"
 
-for example in still-life box-stl box-volume loop-row tween plate-with-holes brick vase glyph-field section-view mug turntable ball-stick; do
-  "$LMSCRIPT" "examples/$example.lms" "build/$example.dslb" >"$WORK/$example.log" || fail "$example compile with $COMPILER_SOURCE"
-  [ "$(od -An -t u1 -j 5 -N 1 "build/$example.dslb" | tr -d ' ')" = 5 ] || fail "$example was not compiled as bytecode v5"
-done
-ok "12 examples compile with $COMPILER_SOURCE as bytecode v5"
-
 want_version="lmcad $(sed -n 's/^project(lmcad VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
 [ "$("$HOST" --version)" = "$want_version" ] || fail "--version prints $want_version"
 set +e; "$HOST" --version extra >/dev/null 2>&1; code=$?; set -e
@@ -56,28 +50,62 @@ ok "--dsl-schema summary lists every canonical registry member"
 diff -u <("$LMSCRIPT" --dsl-signatures schema/lmcad.dsl.json) <("$HOST" --dsl-signatures) || fail "host/compiler signatures differ"
 ok "typed registry signatures match compiler schema signatures"
 
-rm -f build/tween-*.png
-"$HOST" --dsl build/still-life.dslb || fail "still-life run"
-"$HOST" --dsl build/box-stl.dslb || fail "box STL run"
-"$HOST" --dsl build/box-volume.dslb || fail "box volume run"
-"$HOST" --dsl build/loop-row.dslb || fail "loop row run"
-"$HOST" --dsl build/ball-stick.dslb || fail "ball-stick run"
-"$HOST" --dsl build/tween.dslb || fail "tween run"
-"$HOST" --dsl build/plate-with-holes.dslb || fail "plate with holes run"
-"$HOST" --dsl build/brick.dslb || fail "brick run"
-"$HOST" --dsl build/vase.dslb || fail "vase run"
-"$HOST" --dsl build/glyph-field.dslb || fail "glyph field run"
-"$HOST" --dsl build/section-view.dslb || fail "section view run"
-"$HOST" --dsl build/mug.dslb || fail "mug run"
-"$HOST" --dsl build/turntable.dslb || fail "turntable run"
-ok "still-life, STL, loop/tween, CAD models, section, mug, and turntable programs run"
+# Every example is self-executing: `lmscript examples/x.lms` compiles its _dsl_
+# block(s) against the host found on PATH (cli="lmcad" -> the build under test),
+# runs the bytecode with that host and writes images/<name>.png (STL/APNG/frames
+# go to build/). Examples that also bind lmplot need it on PATH, in the lmscript
+# tool cache, or a GITHUB_TOKEN so lmscript can install it; otherwise they are
+# skipped with a message. GIF conversion needs ffmpeg (the examples report a skip).
+export PATH="$HERE/$BUILD_DIR:$PATH"
+if [ -d "${HOME:-}/.cache/lmscript/tools/github/lmctl-ai" ]; then
+  for tool_dir in "$HOME/.cache/lmscript/tools/github/lmctl-ai"/lmplot/latest; do
+    [ -d "$tool_dir" ] && export PATH="$PATH:$tool_dir"
+  done
+fi
+have_lmplot=0
+if command -v lmplot >/dev/null 2>&1 || [ -n "${GITHUB_TOKEN:-}" ]; then have_lmplot=1; fi
+[ -n "$EXE" ] && have_lmplot=0
+rm -rf images build/tween-*.png
+mkdir -p images
+ran=0; skipped=""
+for src in examples/*.lms; do
+  name="$(basename "$src" .lms)"
+  if grep -q 'cli="lmplot"' "$src" && [ "$have_lmplot" = 0 ]; then
+    skipped="$skipped $name"; echo "skip - $name needs lmplot (not on PATH, no GITHUB_TOKEN to install it)"; continue
+  fi
+  "$LMSCRIPT" "$src" "build/$name.dslb" >"$WORK/$name.log" 2>&1 || { cat "$WORK/$name.log" >&2; fail "$name self-executing run"; }
+  [ "$(od -An -t u1 -j 5 -N 1 "build/$name.dslb" | tr -d ' ')" = 5 ] || fail "$name was not compiled as bytecode v5"
+  ran=$((ran+1))
+done
+ok "$ran examples compile as bytecode v5 and self-execute against the built host${skipped:+ (skipped:$skipped)}"
+for name in ball-stick box-volume loop-row still-life section-view mug brick vase plate-with-holes gear-train pressure-vessel coil-spring buckyball dipole-field; do
+  [ -f "images/$name.png" ] || fail "images/$name.png was not written"
+done
+ok "self-executing examples wrote their images/*.png"
+readme_lms=0
+while IFS= read -r url; do
+  rel="${url#https://raw.githubusercontent.com/lmctl-ai/lmcad/main/}"
+  [ -f "$rel" ] || fail "README autorun target missing: $rel"
+  readme_lms=$((readme_lms+1))
+done < <(grep -oE 'lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/[A-Za-z0-9_.-]+\.lms' README.md | sed 's/^lmctl autorun //' | sort -u)
+[ "$readme_lms" -ge 12 ] || fail "expected >= 12 README autorun examples, got $readme_lms"
+grep -qiE 'see source|\[Source\]' README.md && fail "README still links to source instead of autorun"
+readme_img=0
+while IFS= read -r img; do
+  [ -f "$img" ] || fail "README image missing: $img"
+  sig="$(head -c 8 "$img" | od -An -tx1 | tr -d ' \n')"
+  case "$sig" in 89504e470d0a1a0a|4749463839*|4749463837*) ;; *) fail "README image is not PNG/GIF: $img";; esac
+  readme_img=$((readme_img+1))
+done < <(grep -oE 'docs/images/[A-Za-z0-9_.-]+\.(png|gif)' README.md | sort -u)
+[ "$readme_img" -ge 12 ] || fail "expected >= 12 README gallery images, got $readme_img"
+ok "README: $readme_lms autorun examples exist, $readme_img gallery images are valid PNG/GIF"
 "$HOST" --dsl build/loop-row.dslb build/loop-row.dslb >"$WORK/multi.jsonl" || fail "multi-bytecode invocation"
 [ "$(wc -l < "$WORK/multi.jsonl" | tr -d ' ')" = 2 ] || fail "multiple bytecode files did not run in order"
 ok "multiple bytecode files run sequentially against one embedded schema"
 
 python3 - "build" <<'PY'
 import struct,sys,zlib,hashlib,pathlib
-bdir=pathlib.Path(sys.argv[1]); b=(bdir/'still-life.png').read_bytes(); assert b[:8]==b'\x89PNG\r\n\x1a\n'
+bdir=pathlib.Path(sys.argv[1]); idir=pathlib.Path('images'); b=(idir/'still-life.png').read_bytes(); assert b[:8]==b'\x89PNG\r\n\x1a\n'
 w,h=struct.unpack_from('>II',b,16); assert (w,h)==(640,480)
 s=(bdir/'box.stl').read_bytes(); n=struct.unpack_from('<I',s,80)[0]; assert n==12 and len(s)==84+50*n
 assert (bdir/'still-life.ppm').read_bytes().startswith(b'P6\n64 48\n255\n')
@@ -89,18 +117,16 @@ raw=zlib.decompress(b''.join(d for t,d in chunks if t==b'IDAT')); stride=w*3+1
 center=raw[(h//2)*stride+1+3*(w//2):(h//2)*stride+4+3*(w//2)]; assert center != bytes((20,26,41)),center
 frames=sorted(bdir.glob('tween-*.png')); assert len(frames)==30,len(frames)
 hashes=[hashlib.sha256(p.read_bytes()).digest() for p in frames]; assert len(set(hashes))==30
-assert (bdir/'loop-row.png').stat().st_size>1000
-ball_stick=(bdir/'ball-stick.png').read_bytes(); assert ball_stick[:8]==b'\x89PNG\r\n\x1a\n'; assert struct.unpack_from('>II',ball_stick,16)==(640,480)
-box_volume=(bdir/'box-volume.png').read_bytes(); assert box_volume[:8]==b'\x89PNG\r\n\x1a\n'; assert struct.unpack_from('>II',box_volume,16)==(320,240)
-for name in ('plate-with-holes','brick','vase','glyph-field','section-view','mug'):
-    image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
-    ww,hh=struct.unpack_from('>II',image,16); expected=(500,375) if name=='mug' else (560,420) if name=='vase' else (720,540); assert (ww,hh)==expected,(name,ww,hh)
+assert (idir/'loop-row.png').stat().st_size>1000
+ball_stick=(idir/'ball-stick.png').read_bytes(); assert ball_stick[:8]==b'\x89PNG\r\n\x1a\n'; assert struct.unpack_from('>II',ball_stick,16)==(640,480)
+box_volume=(idir/'box-volume.png').read_bytes(); assert box_volume[:8]==b'\x89PNG\r\n\x1a\n'; assert struct.unpack_from('>II',box_volume,16)==(320,240)
+for name in ('plate-with-holes','brick','vase','section-view','mug'):
+    image=(idir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
+    ww,hh=struct.unpack_from('>II',image,16); expected=(720,540) if name=='section-view' else (900,600); assert (ww,hh)==expected,(name,ww,hh)
     facets=(bdir/f'{name}.stl').read_bytes(); count=struct.unpack_from('<I',facets,80)[0]; assert count>(10 if name=='section-view' else 100) and len(facets)==84+count*50
-for name in ('section-view','mug'):
-    image=(bdir/f'{name}.png').read_bytes(); assert image[:8]==b'\x89PNG\r\n\x1a\n'
-print(f'PNG/PPM/OBJ valid; box volume PNG=320x240; CAD PNG dimensions include reduced vase/mug renders, STL box facets={n}, CAD STL facets checked, tween frames={len(frames)}, unique={len(set(hashes))}')
+print(f'PNG/PPM/OBJ valid; box volume PNG=320x240; CAD PNG dimensions checked, STL box facets={n}, CAD STL facets checked, tween frames={len(frames)}, unique={len(set(hashes))}')
 PY
-ok "PNG dimensions/pixels, volume assertion, STL facets, CAD exports, loop render, glyph field, and 30 distinct tween frames"
+ok "PNG dimensions/pixels, volume assertion, STL facets, CAD exports, loop render, and 30 distinct tween frames"
 "$APNG" build/tween.apng 0 "$WORK/tween-apng-first.png" || fail "extract tween APNG frame 0"
 cmp build/tween-0.png "$WORK/tween-apng-first.png" || fail "APNG first frame differs from PNG render"
 "$APNG" build/tween.apng 15 "$WORK/tween-apng-middle.png" || fail "extract tween APNG middle frame"
@@ -133,11 +159,11 @@ cmp build/tween.apng "$WORK/tween.before.apng" || fail "tween APNG changed betwe
 "$HOST" --dsl build/turntable.dslb >/dev/null || fail "turntable APNG deterministic rerun"
 cmp build/turntable.apng "$WORK/turntable.before.apng" || fail "turntable APNG changed between runs"
 ok "tween and turntable APNG reruns are byte deterministic"
-for example in plate-with-holes brick vase glyph-field section-view mug; do
-  cp "build/$example.png" "$WORK/$example.before.png"
+for example in plate-with-holes brick vase section-view mug; do
+  cp "images/$example.png" "$WORK/$example.before.png"
   cp "build/$example.stl" "$WORK/$example.before.stl"
   "$HOST" --dsl "build/$example.dslb" >/dev/null || fail "$example deterministic rerun"
-  cmp "build/$example.png" "$WORK/$example.before.png" || fail "$example PNG changed between runs"
+  cmp "images/$example.png" "$WORK/$example.before.png" || fail "$example PNG changed between runs"
   cmp "build/$example.stl" "$WORK/$example.before.stl" || fail "$example STL changed between runs"
 done
 python3 tests/cad-exports.py

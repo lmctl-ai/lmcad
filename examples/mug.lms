@@ -1,12 +1,25 @@
+# How much coffee does this mug hold? A revolved profile (cm), shelled from
+# the top with 8 mm walls, filleted, with an extruded handle fused on. The
+# capacity is the B-rep volume removed by the shell: 629.5 mL to the brim,
+# within 0.3 % of a hand frustum estimate (r 4.0 -> 3.8 cm, h 13.2 cm).
+# Writes images/mug.png (900x600) and build/mug.stl.
 out = ARGV.len() > 0 ? ARGV[0] : "build/mug.dslb";
-p = _dsl_ schema="../schema/lmcad.dsl.json";
-scene.background(0.16, 0.20, 0.27);
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+scene.background(0.96, 0.97, 0.98);
 let ceramic = material().color(0.34, 0.67, 0.82).roughness(0.30).specular(0.72).shininess(22.0);
 let handle_material = material().color(0.20, 0.50, 0.66).roughness(0.36).specular(0.38).shininess(30.0);
 let profile = scene.sketch();
 profile.point(0.0, -7.0).point(4.0, -7.0).point(4.8, -6.2).point(4.6, 7.0).point(0.0, 7.0).close();
 let mug = scene.revolve_y(profile, ceramic).name("ceramic mug");
+let solid = mug.volume();
 mug.hollow_top(0.8);
+let capacity = solid - mug.volume();   # cm^3 = mL to the brim
+# hand check: the cavity is close to a frustum, r = 4.0 -> 3.8 cm over 13.2 cm
+let frustum = 3.14159265358979 * 13.2 / 3.0 * (4.0 * 4.0 + 4.0 * 3.8 + 3.8 * 3.8);
+scene.assert_close(capacity, frustum, 0.005 * frustum);
+scene.assert_close(capacity, 629.53, 0.01);
 mug.fillet(0.35);
 let handle_profile = scene.sketch();
 for (i in range(0, 25)) {
@@ -22,12 +35,17 @@ let handle = scene.extrude(handle_profile, 0.9, handle_material).position(0.0, 0
 mug.union(handle);
 handle.visible(false);
 scene.assert_close(mug.volume(), 344.08933973285542, 0.000001);
-scene.fit_camera(38.0, 1.2);
+scene.export_stl("build/mug.stl");   # the mug alone, before the coffee
+# coffee filled to 1.5 cm below the rim
+scene.cylinder(3.83, 0.2, material().color(0.30, 0.16, 0.08).specular(0.8).shininess(80.0)).position(0.0, 5.4, 0.0);
+scene.fit_camera(30.0, 1.05);
 scene.directional_light(-0.25, -1.0, -0.45, 1.0);
 scene.fill_light(0.8, -0.2, 0.9, 0.18);
 scene.ambient(0.18);
-scene.render_png("build/mug.png", 500, 375);
-scene.export_stl("build/mug.stl");
+scene.supersample(3);
+scene.render_png("images/mug.png", 900, 600);
 end _dsl_
 savedsl(p, out);
-println(f"wrote {out}");
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote images/mug.png");

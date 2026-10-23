@@ -1,0 +1,115 @@
+# Compressed-air receiver, sized with the thin-wall pressure-vessel formulas
+# (ASME VIII-1 style): design pressure p = 3 MPa, inner radius R = 300 mm,
+# allowable stress S = 138 MPa (SA-516-70 plate).
+#   cylinder (hoop stress governs):   t = p R / (S - 0.6 p)   = 6.6 mm
+#   hemispherical head (half stress): t = p R / (2 S - 0.2 p) = 3.3 mm
+# so a hemispherical head needs only half the shell thickness. The capacity
+# pi R^2 L + 4/3 pi R^3 = 396 litres (L = 1 m) is checked against the B-rep
+# volume of the revolved cavity. The cutaway (orange: inside surface) shows
+# the shell wall.
+# Writes images/pressure-vessel.png (900x560).
+out = ARGV.len() > 0 ? ARGV[0] : "build/pressure-vessel.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+let pi = 3.14159265358979;
+let pr = 3.0;
+let s_allow = 138.0;
+let rr = 30.0;     # cm (the host limits sketch coordinates to +-500 units)
+let cyl = 100.0;
+let t_shell = pr * rr / (s_allow - 0.6 * pr);
+let t_head = pr * rr / (2.0 * s_allow - 0.2 * pr);
+scene.assert_close(t_shell * 10.0, 6.6079, 0.001);   # mm
+scene.assert_close(t_head * 10.0, 3.2680, 0.001);
+let seg = 48;
+
+# cavity (for the capacity check): inner profile, y from -L/2-R to L/2+R
+let cav = scene.sketch();
+cav.point(0.0, 0.0 - cyl / 2.0 - rr);
+for (i in range(1, seg + 1)) {
+  let a = -0.5 * pi + 0.5 * pi * float(i) / float(seg);
+  cav.point(rr * cos(a), 0.0 - cyl / 2.0 + rr * sin(a));
+}
+for (i in range(0, seg)) {
+  let a = 0.5 * pi * float(i) / float(seg);
+  cav.point(rr * cos(a), cyl / 2.0 + rr * sin(a));
+}
+cav.point(0.0, cyl / 2.0 + rr);
+cav.close();
+let cavity = scene.revolve_y(cav, material());
+let litres = cavity.volume() / 1000.0;
+let exact = (pi * rr * rr * cyl + 4.0 / 3.0 * pi * rr * rr * rr) / 1000.0;
+scene.assert_close(exact, 395.84, 0.01);
+scene.assert_close(litres, exact, exact * 0.002);   # 48-facet arcs: < 0.2 %
+cavity.visible(false);
+
+# shell = outer solid minus the cavity
+let ro = rr + t_shell;
+let rh = rr + t_head;
+let sh = scene.sketch();
+sh.point(0.0, 0.0 - cyl / 2.0 - rh);
+for (i in range(1, seg + 1)) {
+  let a = -0.5 * pi + 0.5 * pi * float(i) / float(seg);
+  sh.point(rh * cos(a), 0.0 - cyl / 2.0 + rh * sin(a));
+}
+sh.point(ro, 0.0 - cyl / 2.0);
+sh.point(ro, cyl / 2.0);
+for (i in range(0, seg)) {
+  let a = 0.5 * pi * float(i) / float(seg);
+  sh.point(rh * cos(a), cyl / 2.0 + rh * sin(a));
+}
+sh.point(0.0, cyl / 2.0 + rh);
+sh.close();
+let paint = material().color(0.16, 0.42, 0.66).specular(0.5).shininess(30.0);
+let shell = scene.revolve_y(sh, paint);
+shell.cut(cavity);
+shell.rotate(0.0, 0.0, pi / 2.0);
+# cut away the upper front quarter to show the walls
+let cutter = scene.box(200.0, 50.0, 50.0, paint).position(0.0, 25.0, 25.0);
+shell.cut(cutter);
+# 3 mm primer coat on the inside, so the cutaway reads as inside vs outside
+let primer = material().color(0.93, 0.55, 0.20).specular(0.2);
+let ri = rr - 0.3;
+let inner = scene.sketch();
+inner.point(0.0, 0.0 - cyl / 2.0 - ri);
+for (i in range(1, seg + 1)) {
+  let a = -0.5 * pi + 0.5 * pi * float(i) / float(seg);
+  inner.point(ri * cos(a), 0.0 - cyl / 2.0 + ri * sin(a));
+}
+for (i in range(0, seg)) {
+  let a = 0.5 * pi * float(i) / float(seg);
+  inner.point(ri * cos(a), cyl / 2.0 + ri * sin(a));
+}
+inner.point(0.0, cyl / 2.0 + ri);
+inner.close();
+let coat = scene.revolve_y(cav, primer);
+let core = scene.revolve_y(inner, primer);
+coat.cut(core);
+core.visible(false);
+coat.rotate(0.0, 0.0, pi / 2.0);
+coat.cut(cutter);
+cutter.visible(false);
+
+# top nozzle and two saddles
+let steel = material().color(0.42, 0.45, 0.50).specular(0.3);
+scene.cylinder(4.5, 14.0, steel).position(-35.0, 34.0, -12.0);
+scene.cylinder(7.0, 3.0, steel).position(-35.0, 41.5, -12.0);
+for (sx in range(0, 2)) {
+  let x = -35.0 + 70.0 * float(sx);
+  scene.box(6.0, 26.0, 42.0, steel).position(x, -38.0, 0.0);
+  scene.box(22.0, 2.0, 50.0, steel).position(x, -52.0, 0.0);
+}
+scene.box(190.0, 1.0, 100.0, material().color(0.88, 0.89, 0.90).roughness(0.9)).position(0.0, -53.5, 0.0);
+
+scene.background(0.97, 0.98, 0.99);
+scene.supersample(3);
+scene.ambient(0.28);
+scene.directional_light(-0.40, -0.75, -0.55, 1.0);
+scene.fill_light(0.70, -0.20, 0.40, 0.40);
+scene.camera(30.0, 90.0, 125.0, 260.0, 0.0, -6.0, 0.0);
+scene.render_png("images/pressure-vessel.png", 900, 560);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote images/pressure-vessel.png");

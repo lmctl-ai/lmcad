@@ -19,14 +19,40 @@
 
 ## Build and examples
 
-The root README documents the OCCT prefix build, application build, CLI, and test commands. Examples cover a still life, STL,
-procedural loops, CSV tweening, practical solids, a section view, a handled mug, and a camera turntable. Rendering defaults include
+The root README documents the OCCT prefix build, application build, CLI, and test commands. Rendering defaults include
 key/fill lighting, ambient light, fitted camera framing, and 2x supersampling. The output formats are PNG, PPM, STL, OBJ, and APNG.
+
+## Examples and README images (2026-10-23)
+
+All examples in `examples/*.lms` are self-executing (the lmplot shape): `out = ARGV...; mkdir("images"); mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest"; ... end _dsl_ savedsl(p, out); r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);`. Pictures go to `./images/<name>.png|gif`; STL, PPM, APNG, frames and `keyframes.csv` (tween writes it
+with `write_file`) go to `./build/`. No example reads repository files, so `lmctl autorun <raw URL>` works from an empty directory.
+There are 12 story examples (README gallery, grouped by theme) and 8 basics (examples/README.md); see 06-reference-examples.md.
+
+- Three examples combine hosts: `truss-bridge`, `beam-sections`, `heat-sink` render a PPM with lmcad, then an lmplot block plots it
+  with `binary array=(W,H) skip=15 flipy format='%uchar' ... with rgbimage` beside a chart. DSL blocks cannot see outer or other
+  blocks' variables, so each block recomputes the numbers it needs (same formulas).
+- Animations: `scene.animation()` writes APNG to build/, then the outer script runs
+  `ffmpeg -i x.apng -vf "split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=none" -loop 0 images/x.gif`
+  and prints a skip message if ffmpeg is missing (gear-train, turntable). gear-train is a seamless 36-frame loop.
+- Every story asserts its known answer on the host (`scene.assert_close`): volumes, capacities, forces, spring rate, bond count.
+- `examples/render-all.sh` runs every example from the repo root (local build via PATH or `LMCAD_BIN`, lmplot from the lmscript
+  cache or GITHUB_TOKEN install, ffmpeg required) and copies the gallery set into `docs/images/` with size checks
+  (PNG <= 300 KB, GIF <= 3 MB, ~900 px wide). `docs/readme/` (hero/architecture art) and `examples/renders/` were removed.
+- Host limits met while modelling: sketch coordinates <= 500 units (pressure vessel is modelled in cm), extent 1000;
+  `hollow`/`hollow_top` need a planar end face (closed capsules are shelled with a boolean cut instead).
+- Runtime: the coil spring (~550 tube/sphere shapes) is the slowest, ~20 s CPU; everything else is under 10 s CPU.
 
 ## Tests
 
-`./test.sh` checks SDK pinning, the native build, compilation and execution of all examples, schema/signature parity, image and CAD
-exports, APNG structure and extracted frames, deterministic output, and invalid-input refusals. The ASan/UBSan build uses
+`./test.sh` checks SDK pinning, the native build, schema/signature parity, then runs every example through lmscript with
+`build/` first on PATH (so `cli="lmcad"` binds the host under test), checks the images they write, verifies every README
+`lmctl autorun` target and `docs/images` file (PNG/GIF magic bytes, at least 12 each), and rejects "see source" links. lmplot
+examples are skipped with a message when lmplot is not on PATH/in the lmscript cache and no GITHUB_TOKEN is set (CI passes the
+workflow token; Windows skips them). It also checks image and CAD exports, APNG structure and extracted frames, deterministic
+output, and invalid-input refusals. tests/tween.py runs only the tween example's _dsl_ block against the schema file;
+tests/data/keyframes.csv is the fixture for tween/refusal tests. The ASan/UBSan build uses
 `LMCAD_FULL_STATIC=OFF BUILD_DIR=build-sanitize ./test.sh`.
 
 The section example asserts that its two BRep half-volumes sum to the original 576.0. The polished mug's BRep volume is

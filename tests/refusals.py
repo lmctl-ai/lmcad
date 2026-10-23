@@ -43,17 +43,17 @@ refuses('name-limit', shape + ' s.name("' + 'x' * 1025 + '");', 'shape name exce
 
 # Repeated indexing returns the same immutable row; collection arena growth must
 # not invalidate a handle saved from an earlier collection.
-body = '''let keys = read_keyframes_csv("examples/data/keyframes.csv");
+body = '''let keys = read_keyframes_csv("tests/data/keyframes.csv");
 let first = keys.at(0);
 for (i in range(0, 10000)) {
   if (first.x() != keys.at(0).x()) { scene.background(-1.0, 0.0, 0.0); }
 }
-for (i in range(0, 100)) { read_keyframes_csv("examples/data/keyframes.csv"); }
+for (i in range(0, 100)) { read_keyframes_csv("tests/data/keyframes.csv"); }
 scene.background(first.r(), first.g(), first.b());'''
 source = work / 'stable-rows.lms'; bytecode = work / 'stable-rows.dslb'
 source.write_text(f'p = _dsl_ schema="{root}/schema/lmcad.dsl.json";\n{body}\nend _dsl_\nsavedsl(p, "{bytecode.as_posix()}");\n')
 subprocess.run(compiler_cmd(compiler)+[ str(source)], check=True, stdout=subprocess.DEVNULL)
 subprocess.run([host, '--dsl', str(bytecode)], check=True, stdout=subprocess.DEVNULL)
 for index in [-1, 2]:
-    refuses('keyframe-index', f'let keys = read_keyframes_csv("examples/data/keyframes.csv"); keys.at({index});', 'keyframe index out of range')
-refuses('keyframe-collection-limit', 'for (i in range(0, 4097)) { read_keyframes_csv("examples/data/keyframes.csv"); }', 'object limit exceeded')
+    refuses('keyframe-index', f'let keys = read_keyframes_csv("tests/data/keyframes.csv"); keys.at({index});', 'keyframe index out of range')
+refuses('keyframe-collection-limit', 'for (i in range(0, 4097)) { read_keyframes_csv("tests/data/keyframes.csv"); }', 'object limit exceeded')
