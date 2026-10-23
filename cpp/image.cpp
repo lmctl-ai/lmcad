@@ -18,8 +18,11 @@ void put32(std::vector<unsigned char>& o,uint32_t v){o.push_back(v>>24);o.push_b
 uint32_t crc32(const unsigned char* p,size_t n){uint32_t c=0xffffffffu;for(size_t i=0;i<n;i++){c^=p[i];for(int b=0;b<8;b++)c=(c>>1)^(0xedb88320u&uint32_t(-int(c&1)));}return c^0xffffffffu;}
 void chunk(std::vector<unsigned char>& out,const char* type,const std::vector<unsigned char>& data){put32(out,uint32_t(data.size()));size_t begin=out.size();for(int i=0;i<4;i++)out.push_back(type[i]);out.insert(out.end(),data.begin(),data.end());put32(out,crc32(out.data()+begin,out.size()-begin));}
 void save(const std::string& path,const std::vector<unsigned char>& b){validate_output_path(path);AtomicFile f(path);f.write(b);f.commit();}
-std::vector<unsigned char> raw_frame(const Image& im){
+void validate_image(const Image& im){
   if(im.width<=0||im.height<=0||im.width>8192||im.height>8192||uint64_t(im.width)*im.height>16777216||im.rgb.size()!=size_t(im.width)*im.height*3)throw std::runtime_error("invalid image buffer");
+}
+std::vector<unsigned char> raw_frame(const Image& im){
+  validate_image(im);
   std::vector<unsigned char> raw;raw.reserve(size_t(im.height)*(size_t(im.width)*3+1));for(int y=0;y<im.height;y++){raw.push_back(0);auto b=im.rgb.begin()+size_t(y)*im.width*3;raw.insert(raw.end(),b,b+size_t(im.width)*3);}return raw;
 }
 std::vector<unsigned char> signature(){return {137,80,78,71,13,10,26,10};}
@@ -80,5 +83,5 @@ void write_apng(const std::string& path,const std::vector<Image>& frames,int fps
   for(const auto& frame:frames)writer.add_frame(frame);
   writer.finish();
 }
-void write_ppm(const std::string& path,const Image& im){std::string header="P6\n"+std::to_string(im.width)+" "+std::to_string(im.height)+"\n255\n";std::vector<unsigned char>b(header.begin(),header.end());b.insert(b.end(),im.rgb.begin(),im.rgb.end());save(path,b);}
+void write_ppm(const std::string& path,const Image& im){validate_image(im);std::string header="P6\n"+std::to_string(im.width)+" "+std::to_string(im.height)+"\n255\n";std::vector<unsigned char>b(header.begin(),header.end());b.insert(b.end(),im.rgb.begin(),im.rgb.end());save(path,b);}
 }

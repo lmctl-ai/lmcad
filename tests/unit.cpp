@@ -195,6 +195,11 @@ int main(int argc,char** argv){try{
      check(failed,"buffered output failure was not reported");
    }
  }
+ {
+   bool failed=false;
+   try{lmcad::write_ppm(dir+"/invalid.ppm",{2,1,{1,2,3}});}catch(const std::exception&){failed=true;}
+   check(failed,"PPM accepted an image buffer with the wrong size");
+ }
  lmcad::Shape precise;precise.mesh.triangles={{{10000000.25,0,0},{10000000.75,0,0},{10000000.25,1,0}}};
  lmcad::write_obj(dir+"/precise.obj",{precise});
  auto objbytes=read(dir+"/precise.obj");std::istringstream obj(std::string(objbytes.begin(),objbytes.end()));
