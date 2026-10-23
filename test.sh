@@ -64,14 +64,15 @@ if [ -d "${HOME:-}/.cache/lmscript/tools/github/lmctl-ai" ]; then
 fi
 have_lmplot=0
 if command -v lmplot >/dev/null 2>&1 || [ -n "${GITHUB_TOKEN:-}" ]; then have_lmplot=1; fi
-[ -n "$EXE" ] && have_lmplot=0
+lmplot_why="not on PATH, no GITHUB_TOKEN to install it"
+if [ -n "$EXE" ]; then have_lmplot=0; lmplot_why="lmplot examples are not run on native Windows"; fi
 rm -rf images build/tween-*.png
 mkdir -p images
 ran=0; skipped=""
 for src in examples/*.lms; do
   name="$(basename "$src" .lms)"
   if grep -q 'cli="lmplot"' "$src" && [ "$have_lmplot" = 0 ]; then
-    skipped="$skipped $name"; echo "skip - $name needs lmplot (not on PATH, no GITHUB_TOKEN to install it)"; continue
+    skipped="$skipped $name"; echo "skip - $name needs lmplot ($lmplot_why)"; continue
   fi
   "$LMSCRIPT" "$src" "build/$name.dslb" >"$WORK/$name.log" 2>&1 || { cat "$WORK/$name.log" >&2; fail "$name self-executing run"; }
   [ "$(od -An -t u1 -j 5 -N 1 "build/$name.dslb" | tr -d ' ')" = 5 ] || fail "$name was not compiled as bytecode v5"
