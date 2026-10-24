@@ -1,0 +1,38 @@
+# Solid primitives in one row: box, sphere, cylinder, a cone and a capsule revolved from sketched profiles, and an endpoint tube. Ported from lmmagnum/lmfilament examples/primitives.lms (Magnum Python "Primitives").
+out = ARGV.len() > 0 ? ARGV[0] : "build/primitives.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+let c = material().color(0.85, 0.45, 0.2).specular(0.4);
+scene.background(0.08, 0.09, 0.12);
+scene.box(1.0, 1.0, 1.0, c).rotate(0.35, 0.52, 0.0).translate(-3.0, 0.0, 0.0);
+scene.sphere(0.6, c).position(-1.5, 0.0, 0.0);
+scene.cylinder(0.5, 1.2, c).position(0.0, 0.0, 0.0);
+let cone_profile = scene.sketch();
+cone_profile.point(0.0, -0.6).point(0.5, -0.6).point(0.0, 0.6).close();
+scene.revolve_y(cone_profile, c).translate(1.5, 0.0, 0.0);
+let capsule_profile = scene.sketch();
+for (i in range(0, 9)) {
+  let a = float(i) * 3.14159265 / 16.0;
+  capsule_profile.point(0.4 * sin(a), -0.3 - 0.4 * cos(a));
+}
+for (i in range(0, 9)) {
+  let a = float(i) * 3.14159265 / 16.0;
+  capsule_profile.point(0.4 * cos(a), 0.3 + 0.4 * sin(a));
+}
+capsule_profile.close();
+scene.revolve_y(capsule_profile, c).translate(3.0, 0.0, 0.0);
+scene.tube_between(-1.5, -1.8, 0.0, 1.5, -1.8, 0.0, 0.2, c);
+scene.supersample(3);
+scene.ambient(0.2);
+scene.directional_light(-0.5, -1.0, -0.4, 0.9);
+scene.fill_light(0.8, -0.2, 0.9, 0.2);
+scene.camera(28.0, 0.0, 1.5, 9.0, 0.0, -0.5, 0.0);
+scene.render_png("images/primitives.png", 800, 400);
+end _dsl_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("wrote images/primitives.png");

@@ -1,0 +1,24 @@
+# Five spheres sweep roughness from 0.05 to 0.95. Ported from lmmagnum/lmfilament examples/pbr-spheres.lms (Filament hellopbr).
+out = ARGV.len() > 0 ? ARGV[0] : "build/pbr-spheres.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+scene.background(0.08, 0.09, 0.12);
+for (i in range(0, 5)) {
+  let t = float(i) / 4.0;
+  let m = material().color(0.8, 0.8, 0.8).roughness(lerp(0.05, 0.95, t)).specular(lerp(0.9, 0.1, t)).shininess(lerp(96.0, 8.0, t));
+  scene.sphere(0.9, m).position((float(i) - 2.0) * 2.0, 0.0, 0.0);
+}
+scene.supersample(3);
+scene.ambient(0.18);
+scene.directional_light(-0.5, -0.8, -0.6, 1.0);
+scene.fill_light(0.8, -0.2, 0.9, 0.2);
+scene.camera(17.0, 0.0, 1.0, 14.0, 0.0, 0.0, 0.0);
+scene.render_png("images/pbr-spheres.png", 800, 300);
+end _dsl_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("wrote images/pbr-spheres.png");

@@ -33,7 +33,9 @@ done
 gallery="gear-train.gif coil-spring.png
 truss-bridge.png beam-sections.png pressure-vessel.png
 heat-sink.png buckyball.png dipole-field.png
-mug.png vase.png brick.png plate-with-holes.png"
+mug.png vase.png brick.png plate-with-holes.png
+caffeine-molecule.png dna-double-helix.png cornell-box.png saturn-rings.png
+pbr-spheres.png material-sandbox.png model-viewer.png primitives.png"
 for f in $gallery; do
   cp "images/$f" "docs/images/$f"
 done

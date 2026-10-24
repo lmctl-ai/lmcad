@@ -34,6 +34,23 @@
 | <img src="docs/images/mug.png" width="290" alt="How much does the mug hold?"> | <img src="docs/images/vase.png" width="290" alt="Turned vase"> | <img src="docs/images/brick.png" width="290" alt="2 × 6 construction brick"> |
 | Revolve, shell, fillet, fuse a handle: 629.5 mL from B-rep volumes<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/mug.lms` | Bezier profile revolved and shelled: 5.29 L capacity, ceramic volume asserted<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/vase.lms` | Shelled box plus 12 revolved studs: 2.68 g of ABS<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/brick.lms` |
 
+### Scenes shared with lmblender, lmmagnum and lmfilament
+
+| Caffeine molecule | B-DNA double helix | Cornell box |
+| --- | --- | --- |
+| <img src="docs/images/caffeine-molecule.png" width="290" alt="Caffeine molecule"> | <img src="docs/images/dna-double-helix.png" width="290" alt="B-DNA double helix"> | <img src="docs/images/cornell-box.png" width="290" alt="Cornell box"> |
+| Ball-and-stick, 24 atoms in CPK colours (from lmblender)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/caffeine-molecule.lms` | 28 base pairs, 144 degree groove geometry (from lmblender)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/dna-double-helix.lms` | Boxes and a lamp; this renderer has no global illumination (from lmblender)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/cornell-box.lms` |
+
+| Saturn and its rings | Roughness sweep | Material sandbox |
+| --- | --- | --- |
+| <img src="docs/images/saturn-rings.png" width="290" alt="Saturn and its rings"> | <img src="docs/images/pbr-spheres.png" width="290" alt="Roughness sweep"> | <img src="docs/images/material-sandbox.png" width="290" alt="Material sandbox"> |
+| Oblate sphere plus four bored discs, to scale (from lmblender)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/saturn-rings.lms` | Five spheres, roughness 0.05 to 0.95 (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/pbr-spheres.lms` | Colour by gloss grid (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/material-sandbox.lms` |
+
+| Model viewer | Primitives |   |
+| --- | --- | --- |
+| <img src="docs/images/model-viewer.png" width="290" alt="Model viewer"> | <img src="docs/images/primitives.png" width="290" alt="Primitives"> |   |
+| A posed toy robot from primitives (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/model-viewer.lms` | Box, sphere, cylinder, revolved cone and capsule, endpoint tube (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/primitives.lms` |   |
+
 Every picture is written by the example named in its caption. Paste the `lmctl autorun` line into a terminal in an empty directory: lmscript downloads the released `lmcad` (and `lmplot` for the three charts), runs the program, and leaves `images/<name>.png` (or `.gif`) there. Each example also asserts its own answer (a volume, a force, a count) on the host, so a wrong model fails instead of rendering. `examples/render-all.sh` regenerates `docs/images/`.
 
 ## Quick start (1 minute)

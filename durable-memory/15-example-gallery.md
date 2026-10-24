@@ -1,6 +1,6 @@
 # 15 — Example gallery (stories, known answers, how the pictures are made)
 
-All examples self-execute (see 03-build-run-test.md). README gallery = the 12 stories below, in four themed tables,
+All examples self-execute (see 03-build-run-test.md). README gallery = the 12 stories below, in four themed tables, plus a fifth table of scenes shared with lmblender/lmmagnum/lmfilament (the last five rows),
 each caption = one line + `lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/<name>.lms`.
 Images in `docs/images/` come from `examples/render-all.sh` (never edit them by hand).
 
@@ -18,6 +18,11 @@ Images in `docs/images/` come from `examples/render-all.sh` (never edit them by 
 | mug | lmcad | capacity (volume removed by hollow_top) 629.53 mL, within 0.5 % of a frustum hand check | mug.png (STL exported before the coffee disc) |
 | vase | lmcad | ceramic 1708.27 cm^3, capacity 5287.73 cm^3 | vase.png |
 | brick | lmcad | volume 2548.86 mm^3 -> 2.68 g ABS | brick.png |
+| caffeine-molecule | lmcad | none (coordinates copied from lmblender) | caffeine-molecule.png 900x600 |
+| dna-double-helix | lmcad | none; 28 base pairs, 34.3 deg twist, 0.338 nm rise (from lmblender) | dna-double-helix.png 900x500 |
+| cornell-box | lmcad | none; boxes + lamp, no global illumination (from lmblender) | cornell-box.png 640x640 |
+| saturn-rings | lmcad | none; ring bands are cylinders with `cut` bores, radii from lmblender | saturn-rings.png 900x560 |
+| pbr-spheres, material-sandbox, model-viewer, primitives | lmcad | none; ported from lmmagnum/lmfilament | one PNG each |
 
 Basics (examples/README.md only): box-volume, box-stl, loop-row, still-life, section-view, ball-stick (water at 104.5 deg),
 tween (writes build/keyframes.csv itself), turntable (APNG -> images/turntable.gif).
