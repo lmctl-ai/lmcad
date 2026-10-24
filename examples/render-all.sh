@@ -36,10 +36,14 @@ heat-sink.png buckyball.png dipole-field.png
 mug.png vase.png brick.png plate-with-holes.png
 caffeine-molecule.png dna-double-helix.png cornell-box.png saturn-rings.png
 pbr-spheres.png material-sandbox.png model-viewer.png primitives.png
-multidraw.png cubemap.png bullet.png fluidsimulation3d.png fluidsimulation2d.png textured-triangle.png"
+multidraw.png cubemap.png bullet.png fluidsimulation3d.png fluidsimulation2d.png textured-triangle.png
+level-1-sessions.png level-1-sessions.gif level-2-orchestration.png level-2-orchestration.gif
+level-3-hands-off-lead.png level-3-hands-off-lead.gif level-4-automation.png level-4-automation.gif"
 for f in $gallery; do
   cp "images/$f" "docs/images/$f"
 done
+mkdir -p docs/videos
+cp images/level-*.mp4 docs/videos/ 2>/dev/null || true
 python3 - $gallery <<'PY'
 import sys, pathlib, struct
 for name in sys.argv[1:]:
