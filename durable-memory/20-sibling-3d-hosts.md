@@ -16,6 +16,7 @@ schema, binds methods in `register_host()`, and prints one JSON result line (`{"
 | camera | `camera_look_at(ex,ey,ez, tx,ty,tz, fov)`, fov vertical | `camera(fov, ex,ey,ez, tx,ty,tz)`, fov vertical | `camera(fov, ex,ey,ez, tx,ty,tz)`, fov **horizontal** | `camera(fov, ex,ey,ez, tx,ty,tz)`, fov vertical |
 | rotation units | degrees (`rotate_x/y/z`, baked into the mesh) | **radians** (`rotate(rx,ry,rz)`) | degrees (`rotate`, Euler Z,Y,X) | degrees (`rotate`, Euler Z,Y,X) |
 | materials | `scene.material(r,g,b,metal,rough,transmission,er,eg,eb,estrength)` | `material().color().roughness().specular().shininess()` | same as lmcad | one compiled Filament material, `set_float3("baseColor", ...)` before each add |
+| textures | not exposed | not exposed | `scene.texture(w,h)` / `texture_checker` / `texture_file(path)`, `Texture.pixel/filter/wrap/repeat/save_png`, `material().texture(t)` (multiplies the colour; trilinear mips in the rasterizer; PNG/JPEG/BMP/TGA via stb_image) | same objects on `fil`, bound with `mat.set_texture("albedo", t)` to a `sampler2d` parameter and uploaded to Filament; preview samples the albedo |
 | license | binary GPL-3.0-or-later, own sources MIT | MIT | MIT | MIT |
 | run it | released host via lmscript's tool cache (no local build on the dev box) | released host via tool cache | `lmmagnum/build/lmmagnum` | `lmfilament/build/host/lmfilament` (needs `~/toolchains/llvm19`, clang >= 17) |
 
@@ -48,7 +49,7 @@ mutated later (that is how animation works).
 4. Field of view: lmmagnum is horizontal, the others vertical. At 16:9 a vertical 43 degrees is a horizontal ~70.
 5. lmcad has no cone/capsule/torus/triangle primitive (use `revolve_y`/`extrude` of a `sketch`); lmblender has no triangle primitive; its `label()` accepts letters and spaces only.
 6. No global illumination or reflections outside lmblender: Cornell box colour bleeding and mirror spheres only exist there. State that in the example header and the README caption.
-7. lmfilament binds one material snapshot per `add`: set `baseColor` before each add. Parameters are validated on add.
+7. lmfilament binds one material snapshot per `add`: set `baseColor` (and `set_texture`, with filter and wrap already configured) before each add. Parameters are validated on add. Texture `v = 0` is the image's top row in both hosts' sampling; the primitives' UVs are oriented so images are upright when viewed from outside.
 8. Keep examples self-contained so `lmctl autorun <raw URL>` works from any directory: inline materials, write only to `images/` and `build/`.
 9. Verify the picture: render, then look at it. Cameras, fov and light intensities always need one tuning pass per engine.
 
@@ -80,6 +81,9 @@ mutated later (that is how animation works).
 | `saturn-rings` | x | x | x | x |
 | `shadows` | x |   | x | x |
 | `text` | x |   | x | x |
+| `texture-modes` |   |   | x | x |
+| `textured-planet` |   |   | x | x |
+| `textured-primitives` |   |   | x | x |
 | `textured-triangle` |   | x | x |   |
 | `truss-bridge` | x | x | x | x |
 
