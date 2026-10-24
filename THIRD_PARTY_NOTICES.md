@@ -5,7 +5,7 @@ Project license
 ---------------
 The lmcad-authored source is licensed under the MIT License; see `LICENSE`.
 This includes the vendored `cpp/dslvm.hpp`, which originates from the
-MIT-licensed cpp-dsl-sdk, and lmcad's own C++ code and tools.
+MIT-licensed lmcode-cpp, and lmcad's own C++ code and tools.
 
 Open CASCADE Technology (OCCT) 8.0.1
 ------------------------------------

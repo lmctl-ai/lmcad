@@ -5,7 +5,7 @@ to it from their own `20-sibling-3d-hosts.md`. Each repo's own docs cover its in
 
 ## 1. The family
 
-Four static, dependency-free C++ hosts for lmscript `_dsl_` blocks (cpp-dsl-sdk `dslvm.hpp`, DSL bytecode v5). Each embeds its JSON
+Four static, dependency-free C++ hosts for lmscript `_dsl_` blocks (lmcode-cpp `dslvm.hpp`, DSL bytecode v5). Each embeds its JSON
 schema, binds methods in `register_host()`, and prints one JSON result line (`{"ok": true, ...}`; exit 0 ok, 2 usage, 3 load/run error).
 
 | | lmblender | lmcad | lmmagnum | lmfilament |

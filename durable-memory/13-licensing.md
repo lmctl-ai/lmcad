@@ -4,7 +4,7 @@ lmcad-authored code is licensed under MIT. The exact `LICENSE` text is
 copied from `lmctl-ai/lmcpp` and states `Copyright (c) 2026 Lattice Systems
 LLC`. No email address is included in the project license, README or npm
 metadata. The MIT license covers lmcad's own code and its vendored
-`cpp/dslvm.hpp`, now from the MIT-licensed cpp-dsl-sdk. No separate notice is
+`cpp/dslvm.hpp`, now from the MIT-licensed lmcode-cpp. No separate notice is
 needed for the SDK header or the SDK's `stdlib/` catalog.
 
 ## Third-party components
