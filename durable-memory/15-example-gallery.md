@@ -23,6 +23,7 @@ Images in `docs/images/` come from `examples/render-all.sh` (never edit them by 
 | cornell-box | lmcad | none; boxes + lamp, no global illumination (from lmblender) | cornell-box.png 640x640 |
 | saturn-rings | lmcad | none; ring bands are cylinders with `cut` bores, radii from lmblender | saturn-rings.png 900x560 |
 | pbr-spheres, material-sandbox, model-viewer, primitives | lmcad | none; ported from lmmagnum/lmfilament | one PNG each |
+| multidraw, cubemap, bullet, fluidsimulation3d, fluidsimulation2d, textured-triangle | lmcad | none; magnum-examples analogues (bullet = closed-form ballistics, fluids = streamlines of analytic flows, no solver; textured-triangle extrudes 64 sketch triangles) | one PNG each |
 
 Basics (examples/README.md only): box-volume, box-stl, loop-row, still-life, section-view, ball-stick (water at 104.5 deg),
 tween (writes build/keyframes.csv itself), turntable (APNG -> images/turntable.gif).

@@ -46,10 +46,20 @@
 | <img src="docs/images/saturn-rings.png" width="290" alt="Saturn and its rings"> | <img src="docs/images/pbr-spheres.png" width="290" alt="Roughness sweep"> | <img src="docs/images/material-sandbox.png" width="290" alt="Material sandbox"> |
 | Oblate sphere plus four bored discs, to scale (from lmblender)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/saturn-rings.lms` | Five spheres, roughness 0.05 to 0.95 (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/pbr-spheres.lms` | Colour by gloss grid (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/material-sandbox.lms` |
 
-| Model viewer | Primitives |   |
+| Model viewer | Primitives | Multi draw |
 | --- | --- | --- |
-| <img src="docs/images/model-viewer.png" width="290" alt="Model viewer"> | <img src="docs/images/primitives.png" width="290" alt="Primitives"> |   |
-| A posed toy robot from primitives (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/model-viewer.lms` | Box, sphere, cylinder, revolved cone and capsule, endpoint tube (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/primitives.lms` |   |
+| <img src="docs/images/model-viewer.png" width="290" alt="Model viewer"> | <img src="docs/images/primitives.png" width="290" alt="Primitives"> | <img src="docs/images/multidraw.png" width="290" alt="Multi draw"> |
+| A posed toy robot from primitives (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/model-viewer.lms` | Box, sphere, cylinder, revolved cone and capsule, endpoint tube (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/primitives.lms` | 180 meshes in six rings (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/multidraw.lms` |
+
+| Cube map | Falling boxes | 3D flow streamlines |
+| --- | --- | --- |
+| <img src="docs/images/cubemap.png" width="290" alt="Cube map"> | <img src="docs/images/bullet.png" width="290" alt="Falling boxes"> | <img src="docs/images/fluidsimulation3d.png" width="290" alt="3D flow streamlines"> |
+| Six-face room around glossy spheres (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/cubemap.lms` | 64 boxes with closed-form fall and bounce, no engine (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/bullet.lms` | 32 ABC-flow streamlines coloured by speed (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/fluidsimulation3d.lms` |
+
+| 2D vortex pair | Checker triangle |   |
+| --- | --- | --- |
+| <img src="docs/images/fluidsimulation2d.png" width="290" alt="2D vortex pair"> | <img src="docs/images/textured-triangle.png" width="290" alt="Checker triangle"> |   |
+| 40 streamlines of two opposite vortices (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/fluidsimulation2d.lms` | 64 extruded sub-triangles standing in for a texture (from lmmagnum)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmcad/main/examples/textured-triangle.lms` |   |
 
 Every picture is written by the example named in its caption. Paste the `lmctl autorun` line into a terminal in an empty directory: lmscript downloads the released `lmcad` (and `lmplot` for the three charts), runs the program, and leaves `images/<name>.png` (or `.gif`) there. Each example also asserts its own answer (a volume, a force, a count) on the host, so a wrong model fails instead of rendering. `examples/render-all.sh` regenerates `docs/images/`.
 
