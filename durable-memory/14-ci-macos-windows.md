@@ -60,3 +60,7 @@ macos-x64 ~40 min, windows-x64 ~21 min. Warm full Linux job ~75 s; warm
 windows dispatch ~4 min. Prefix caches are keyed by OCCT version + flags
 hash + OS/arch + compiler version. Windows CI attempts on the OCCT error-path
 segfault: 4 (cache/prefix layout, stack size, …) before gating the checks.
+
+## Automatic releases
+
+Every push to `main` that CI accepts is released automatically. The `version` job in `.github/workflows/ci.yml` picks `MAJOR.MINOR.<run number>` (MAJOR.MINOR come from the version source in the repo, the patch is the workflow run number), every build job runs `scripts/stamp-version.sh` to write that version into the working tree before building (never committed), so the binary reports it. When all platform builds and tests pass, the `release` job creates the tag `vMAJOR.MINOR.N` on the pushed commit and publishes the assets, marked latest. Pull requests and manual runs never release. Pushing a `v*` tag by hand still releases exactly that version. To move to a new MAJOR.MINOR, change the version source (`project(... VERSION x.y.z)` in `CMakeLists.txt`, or the `VERSION` file for lmblender) in a commit.
