@@ -1,8 +1,7 @@
-# The four 3D hosts: how they relate and how to work on them
+# The four 3D hosts: how they relate
 
-Identical copy in `durable-memory/20-sibling-3d-hosts-and-conventions.md` of lmblender, lmcad, lmmagnum and lmfilament. Change the
-facts here in all four in the same task. Each repo's own docs cover its internals; this file covers everything that is true across
-the family, plus the working conventions every agent must follow.
+Canonical cross-repo reference, kept here in lmcad (https://github.com/lmctl-ai/lmcad/blob/main/durable-memory/20-sibling-3d-hosts.md); the other three repos link
+to it from their own `20-sibling-3d-hosts.md`. Each repo's own docs cover its internals; this file covers what is true across the family.
 
 ## 1. The family
 
@@ -97,14 +96,16 @@ fluids from lmmagnum/lmfilament (Magnum examples); the four `level-N-*` clips ar
 - Images live in `docs/images/` (PNG; GIF for animation), MP4s in `docs/videos/`. Budgets: lmcad PNG <= 300,000 bytes, lmblender PNG <= 300 KiB, GIF <= 3 MB (both repos' tests check README links, magic bytes and sizes).
 - Regenerate: lmmagnum `scripts/update-readme-images.sh`; lmfilament `examples/render-all.sh`; lmcad `examples/render-all.sh` (needs ffmpeg); lmblender `examples/render-all.sh`. Examples write `images/<name>.png` in the current directory, so run them from a scratch directory.
 - Animated examples write 240 frames to `build/<name>/frame-N.png`, then `ffmpeg` (optional; the example skips with a message when absent) encodes `images/<name>.mp4` and a 12 fps palette GIF.
-- Add the picture, the caption, the test list entry (`test.sh` image loop) and the docs row in the same commit as the example.
+- A new example needs: the `.lms`, the picture(s), the README caption, an entry in the repo's `test.sh` image/compile loop, and a row in its example docs.
 
-## 6. Working conventions (mandatory)
+## 6. Running and testing
 
-- **Always commit and push to `origin main` at the end of a task**, without asking and without explaining why something is unpushed. Rebase on a rejected push; never force-push `main`.
-- **Identity:** `mike-lmctl <281311770+mike-lmctl@users.noreply.github.com>` (`git config user.name/user.email`). Never use `mikema3`. End commit messages with the Co-Authored-By line the harness provides.
-- **Releases are automatic.** Every push to `main` that CI accepts publishes `vMAJOR.MINOR.<run number>` (see the "Automatic releases" section of each repo's CI doc). Do not bump versions or cut tags by hand; MAJOR.MINOR changes only when the version source (`CMakeLists.txt` `project(... VERSION)`, or lmblender's `VERSION` file) is edited deliberately. `@latest` lags a push by the CI time (20-40 min cold); that gap is accepted.
-- **Docs travel with code.** Update `durable-memory/` (and this file when a fact about the family changes) in the same commit as the behaviour change.
-- **Tests before pushing:** lmmagnum and lmfilament `./test.sh` (minutes); lmcad `test.sh` needs the OCCT prefix and a full build, so rely on CI plus running the touched examples against the released host; lmblender's full `test.sh` needs a complete Cycles build (hours), so compile-check examples with `lmscript` and read the README gate in `test.sh`.
-- **Do not trust workflow-level green** where jobs are `continue-on-error` (lmblender `platforms`): read per-job conclusions.
-- ffmpeg 4.4 is installed locally; PIL is available for contact sheets when reviewing many pictures.
+- **Release versions are stamped by CI.** Every push to `main` is built and released as `vMAJOR.MINOR.<run number>`; build jobs write the version into
+  `CMakeLists.txt` (or lmblender's `VERSION`) with `scripts/stamp-version.sh` before compiling, so `--version` equals the tag. The committed
+  MAJOR.MINOR is the base; each repo's CI doc has the details. `@latest` therefore lags a push by the CI time (20-40 min on a cold cache).
+- **Per-repo checks.** lmmagnum and lmfilament: `./test.sh` (minutes; SDK pin, build, signature parity with `lmscript --dsl-signatures`, every example, static link).
+  lmcad: `test.sh` needs the OCCT prefix and a full build, so day to day run the touched examples against the released host. lmblender: the full
+  `test.sh` needs a complete Cycles build (hours); check examples with `lmscript` and the README gate (captions, image magic bytes and sizes) that `test.sh` embeds.
+- **Do not trust workflow-level green** where jobs are `continue-on-error` (lmblender `platforms`); read per-job conclusions with `gh run view RUN --json jobs`.
+- **Local tools.** ffmpeg 4.4 (GIF/MP4 steps; examples skip with a message when absent), Pillow (contact sheets while reviewing pictures), `~/toolchains/llvm19` (lmfilament).
+- **Siblings by repo:** [lmblender](https://github.com/lmctl-ai/lmblender/blob/main/durable-memory/00-index.md), [lmcad](https://github.com/lmctl-ai/lmcad/blob/main/durable-memory/00-index.md), [lmmagnum](https://github.com/lmctl-ai/lmmagnum/blob/main/durable-memory/00-index.md), [lmfilament](https://github.com/lmctl-ai/lmfilament/blob/main/durable-memory/00-index.md). Locally they are `../<repo>/durable-memory/`.
