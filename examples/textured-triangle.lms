@@ -1,0 +1,45 @@
+# Magnum example "Textured Triangle" (https://magnum.graphics/doc/magnum/examples-textured-triangle.html), reproduced headless: no image import here, so the "texture" is a checker made of 64 small triangles subdividing the big one (each is its own shape, coloured by (i + j) parity). Magnum samples a texture in a fragment shader.
+out = ARGV.len() > 0 ? ARGV[0] : "build/textured-triangle.dslb";
+mkdir("images");
+mkdir("build");
+p = _lmcode_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+let tile_a = material().color(0.95, 0.85, 0.3).specular(0.1);
+let tile_b = material().color(0.25, 0.4, 0.85).specular(0.1);
+scene.background(0.08, 0.09, 0.12);
+scene.ambient(0.9);
+let n = 8;
+let ax = -2.0; let ay = -1.6;
+let bx = 2.0; let by = -1.6;
+let cx = 0.0; let cy = 2.0;
+for (i in range(0, n)) {
+  for (j in range(0, n - i)) {
+    let x0 = ax + (bx - ax) * float(i) / float(n) + (cx - ax) * float(j) / float(n);
+    let y0 = ay + (by - ay) * float(i) / float(n) + (cy - ay) * float(j) / float(n);
+    let x1 = x0 + (bx - ax) / float(n); let y1 = y0 + (by - ay) / float(n);
+    let x2 = x0 + (cx - ax) / float(n); let y2 = y0 + (cy - ay) / float(n);
+    let odd = (i - (i / 2) * 2 + j - (j / 2) * 2) - ((i - (i / 2) * 2 + j - (j / 2) * 2) / 2) * 2;
+    let m = tile_a;
+    if (odd == 1) { m = tile_b; }
+    let t1 = scene.sketch();
+    t1.point(x0, y0).point(x1, y1).point(x2, y2).close();
+    scene.extrude(t1, 0.05, m);
+    if (j < n - i - 1) {
+      let x3 = x1 + (cx - ax) / float(n); let y3 = y1 + (cy - ay) / float(n);
+      let m2 = m;
+      let t2 = scene.sketch();
+      t2.point(x1, y1).point(x3, y3).point(x2, y2).close();
+      scene.extrude(t2, 0.05, m2);
+    }
+  }
+}
+scene.supersample(2);
+scene.camera(32.0, 0.0, 0.0, 9.0, 0.0, 0.0, 0.0);
+scene.directional_light(0.0, 0.0, -1.0, 0.1);
+scene.render_png("images/textured-triangle.png", 640, 560);
+end _lmcode_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("wrote images/textured-triangle.png");

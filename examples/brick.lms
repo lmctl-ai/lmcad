@@ -1,0 +1,39 @@
+# A 2 x 6 construction brick: shelled to a 1.2 mm wall, with twelve
+# revolved studs fused on. Its B-rep volume, 2548.86 mm^3, is asserted, which
+# makes the moulded mass 2.68 g in ABS (1.05 g/cm^3).
+# Writes images/brick.png (900x600) and build/brick.stl.
+out = ARGV.len() > 0 ? ARGV[0] : "build/brick.dslb";
+mkdir("images");
+mkdir("build");
+p = _lmcode_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+scene.background(0.96, 0.97, 0.98);
+let red = material().color(0.78, 0.13, 0.07).roughness(0.38).specular(0.22).shininess(28.0);
+let brick = scene.box(48.0, 9.6, 16.0, red).name("brick");
+brick.hollow(1.2);
+for (ix in range(0, 6)) {
+  for (iz in range(0, 2)) {
+    let x = -20.0 + float(ix) * 8.0;
+    let z = -4.0 + float(iz) * 8.0;
+    let stud_profile = scene.sketch();
+    stud_profile.point(0.0, 0.0).point(2.4, 0.0).point(2.4, 1.55).point(2.15, 1.8).point(0.0, 1.8).close();
+    let stud = scene.revolve_y(stud_profile, red).position(x, 4.8, z);
+    brick.union(stud);
+    stud.visible(false);
+  }
+}
+scene.assert_close(brick.volume(), 2548.8618743534171, 0.000001);
+scene.assert_close(brick.volume() / 1000.0 * 1.05, 2.676, 0.001);   # grams of ABS
+scene.camera(30.0, 50.0, 48.0, 62.0, 0.0, 2.0, 0.0);
+scene.directional_light(-0.25, -1.0, -0.45, 1.0);
+scene.fill_light(0.8, -0.2, 0.9, 0.12);
+scene.ambient(0.12);
+scene.supersample(3);
+scene.render_png("images/brick.png", 900, 600);
+scene.export_stl("build/brick.stl");
+end _lmcode_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("wrote images/brick.png");

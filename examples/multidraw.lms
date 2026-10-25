@@ -1,0 +1,37 @@
+# Magnum example "Multi Draw" (https://magnum.graphics/doc/magnum/examples-multidraw.html), reproduced headless: 180 meshes of four kinds (box, sphere, cylinder, cone) in six rings, coloured by angle. The original issues them in one GPU multi-draw call; here each is its own shape.
+out = ARGV.len() > 0 ? ARGV[0] : "build/multidraw.dslb";
+mkdir("images");
+mkdir("build");
+p = _lmcode_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+for (i in range(0, 180)) {
+  let ring = i / 30;
+  let k = i - ring * 30;
+  let a = float(k) * 6.2831853 / 30.0 + float(ring) * 0.35;
+  let rad = 2.0 + 1.25 * float(ring);
+  let x = rad * cos(a);
+  let z = rad * sin(a);
+  let y = 0.45 * sin(3.0 * a + float(ring));
+  let kind = i - (i / 4) * 4;
+  let cr = 0.5 + 0.5 * sin(a);
+  let cg = 0.5 + 0.5 * sin(a + 2.094);
+  let cb = 0.5 + 0.5 * sin(a + 4.189);
+  let m = material().color(cr, cg, cb).specular(0.4);
+  if (kind == 0) { scene.box(0.6, 0.6, 0.6, m).rotate(0.0, a, 0.0).translate(x, y, z); }
+  if (kind == 1) { scene.sphere(0.36, m).position(x, y, z); }
+  if (kind == 2) { scene.cylinder(0.3, 0.7, m).position(x, y, z); }
+  if (kind == 3) { scene.box(0.4, 0.8, 0.4, m).position(x, y, z); }
+}
+scene.background(0.06, 0.07, 0.1);
+scene.supersample(2);
+scene.ambient(0.22);
+scene.camera(42.0, 0.0, 13.0, 16.0, 0.0, 0.0, 0.0);
+scene.directional_light(-0.4, -0.8, -0.5, 0.95);
+scene.fill_light(0.8, -0.2, 0.9, 0.2);
+scene.render_png("images/multidraw.png", 900, 640);
+end _lmcode_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("wrote images/multidraw.png");

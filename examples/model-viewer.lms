@@ -1,0 +1,31 @@
+# A posed multi-shape model, a toy robot built from a box, spheres and cylinders on a floor. Ported from lmmagnum/lmfilament examples/model-viewer.lms (Magnum Python "Model viewer").
+out = ARGV.len() > 0 ? ARGV[0] : "build/model-viewer.dslb";
+mkdir("images");
+mkdir("build");
+p = _lmcode_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+let body = material().color(0.7, 0.72, 0.78).specular(0.5);
+let eye = material().color(0.1, 0.8, 0.9).specular(0.8);
+let floor = material().color(0.25, 0.27, 0.3).specular(0.0);
+scene.background(0.12, 0.13, 0.16);
+scene.box(10.0, 0.1, 10.0, floor).position(0.0, -2.05, 0.0);
+scene.box(1.4, 1.8, 1.0, body).position(0.0, 0.0, 0.0);
+scene.sphere(0.6, body).position(0.0, 1.5, 0.0);
+scene.sphere(0.12, eye).position(-0.2, 1.6, 0.55);
+scene.sphere(0.12, eye).position(0.2, 1.6, 0.55);
+scene.cylinder(0.18, 1.4, body).rotate(0.0, 0.0, 0.2618).translate(-1.0, 0.1, 0.0);
+scene.cylinder(0.18, 1.4, body).rotate(0.0, 0.0, -0.2618).translate(1.0, 0.1, 0.0);
+scene.cylinder(0.22, 1.2, body).position(-0.4, -1.4, 0.0);
+scene.cylinder(0.22, 1.2, body).position(0.4, -1.4, 0.0);
+scene.supersample(3);
+scene.ambient(0.2);
+scene.directional_light(-0.5, -1.0, -0.6, 0.9);
+scene.fill_light(0.8, -0.2, 0.9, 0.2);
+scene.camera(35.0, 4.0, 2.5, 7.0, 0.0, 0.2, 0.0);
+scene.render_png("images/model-viewer.png", 640, 640);
+end _lmcode_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("wrote images/model-viewer.png");

@@ -1,0 +1,148 @@
+# How many fins should a passive heat sink have? A 60 x 60 mm aluminium
+# sink (30 mm fins, 1.5 mm thick) stands vertically in still air, 40 K above
+# ambient. More fins add area, but narrow channels choke the buoyant flow.
+# Elenbaas' parallel-plate correlation gives h for each fin spacing S, the fin
+# efficiency is tanh(mH)/(mH), and the sweep over 4..20 fins finds the lowest
+# thermal resistance: 8 fins (S = 6.9 mm), close to the Bar-Cohen & Rohsenow
+# optimum spacing S_opt = 2.714 (L nu alpha / g beta dT)^(1/4) = 5.9 mm.
+# 1. lmcad repeats the sweep, builds the optimal sink as one B-rep solid and
+#    checks its volume against the analytic value.
+# 2. lmplot draws R_th(S) beside the render.
+# Writes images/heat-sink.png (900x540).
+out = ARGV.len() > 0 ? ARGV[0] : "build/heat-sink.dslb";
+mkdir("images");
+mkdir("build");
+
+cad = _lmcode_ cli="lmcad" install="github:lmctl-ai/lmcad@latest";
+let w = 0.06;
+let len = 0.06;
+let fin_h = 0.03;
+let t = 0.0015;
+let dt = 40.0;
+let nu = 0.000018;
+let alpha = 0.0000255;
+let k_air = 0.0275;
+let g_beta = 9.81 / 320.0;
+let k_al = 200.0;
+let best_n = 0;
+let best_r = 1000000.0;
+for (n in range(4, 21)) {
+  let s = (w - float(n) * t) / float(n - 1);
+  let ra = g_beta * dt * s * s * s / (nu * alpha);
+  let el = ra * s / len;
+  let nu_s = 1.0 / sqrt(576.0 / (el * el) + 2.873 / sqrt(el));
+  let h = nu_s * k_air / s;
+  let mh = sqrt(2.0 * h / (k_al * t)) * fin_h;
+  let e2 = pow(2.718281828459045, 2.0 * mh);
+  let eta = ((e2 - 1.0) / (e2 + 1.0)) / mh;
+  let q = h * dt * (float(n) * 2.0 * fin_h * len * eta + float(n - 1) * s * len);
+  let r = dt / q;
+  if (r < best_r) {
+    best_r = r;
+    best_n = n;
+  }
+}
+scene.assert_close(float(best_n), 8.0, 0.0);
+
+scene.background(1.0, 1.0, 1.0);
+scene.supersample(3);
+scene.ambient(0.22);
+scene.directional_light(-0.55, -0.70, -0.45, 1.0);
+scene.fill_light(0.80, -0.20, -0.30, 0.30);
+let alu = material().color(0.70, 0.74, 0.80).specular(0.55).shininess(44.0);
+let chip = material().color(0.12, 0.13, 0.15).roughness(0.7);
+# millimetres for geometry
+let base = scene.box(60.0, 5.0, 60.0, alu).position(0.0, 2.5, 0.0);
+let pitch = (60.0 - 1.5) / float(best_n - 1);
+for (i in range(0, best_n)) {
+  let fin = scene.box(1.5, 31.0, 60.0, alu).position(-29.25 + float(i) * pitch, 19.5, 0.0);
+  base.union(fin);
+  fin.visible(false);
+}
+let mm3 = 60.0 * 5.0 * 60.0 + float(best_n) * 1.5 * 30.0 * 60.0;
+scene.assert_close(base.volume(), mm3, 0.01);
+scene.box(36.0, 3.0, 36.0, chip).position(0.0, -1.5, 0.0);
+scene.box(76.0, 1.6, 76.0, material().color(0.10, 0.42, 0.26).roughness(0.8)).position(0.0, -3.8, 0.0);
+scene.camera(30.0, 135.0, 105.0, 150.0, 0.0, 8.0, 0.0);
+scene.render_ppm("build/heat-sink-3d.ppm", 400, 440);
+end _lmcode_
+savedsl(cad, "build/heat-sink-3d.dslb");
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(cad), ["--dsl", "build/heat-sink-3d.dslb"]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+
+p = _lmcode_ cli="lmplot" install="github:lmctl-ai/lmplot@latest";
+let w = 0.06;
+let len = 0.06;
+let fin_h = 0.03;
+let t = 0.0015;
+let dt = 40.0;
+let nu = 0.000018;
+let alpha = 0.0000255;
+let k_air = 0.0275;
+let g_beta = 9.81 / 320.0;
+let k_al = 200.0;
+let rows = "";
+for (n in range(4, 21)) {
+  let s = (w - float(n) * t) / float(n - 1);
+  let ra = g_beta * dt * s * s * s / (nu * alpha);
+  let el = ra * s / len;
+  let nu_s = 1.0 / sqrt(576.0 / (el * el) + 2.873 / sqrt(el));
+  let h = nu_s * k_air / s;
+  let mh = sqrt(2.0 * h / (k_al * t)) * fin_h;
+  let e2 = pow(2.718281828459045, 2.0 * mh);
+  let eta = ((e2 - 1.0) / (e2 + 1.0)) / mh;
+  let q = h * dt * (float(n) * 2.0 * fin_h * len * eta + float(n - 1) * s * len);
+  rows = rows + str(n) + " " + str(s * 1000.0) + " " + str(dt / q) + " " + str(h) + " " + str(q) + "\n";
+}
+plot.data("SWEEP", rows);
+let s_opt = 2.714 * sqrt(sqrt(len * nu * alpha / (g_beta * dt))) * 1000.0;
+plot.cmd("set terminal unknown");
+plot.cmd("stats $SWEEP using 3 nooutput");
+let r_min = plot.num("STATS_min");
+plot.echo("minimum thermal resistance (K/W): " + str(r_min));
+plot.echo("Bar-Cohen/Rohsenow optimum spacing (mm): " + str(s_opt));
+
+plot.png("images/heat-sink.png", 900, 540);
+plot.cmd("set encoding utf8");
+plot.cmd("set multiplot");
+plot.script("set origin 0.0, 0.0\nset size 0.44, 1.0");
+plot.script("set lmargin 0\nset rmargin 0\nset tmargin 3\nset bmargin 1");
+plot.cmd("set title 'Optimal sink: 8 fins, 60 × 60 mm (lmcad)' font ',12'");
+plot.cmd("set xrange [0:399]");
+plot.cmd("set yrange [0:439]");
+plot.cmd("set size ratio -1");
+plot.cmd("unset tics");
+plot.cmd("unset border");
+plot.cmd("unset key");
+plot.cmd("plot 'build/heat-sink-3d.ppm' binary array=(400,440) skip=15 flipy format='%uchar' using 1:2:3 with rgbimage");
+plot.cmd("set size noratio");
+plot.script("set origin 0.44, 0.0\nset size 0.56, 1.0");
+plot.script("set lmargin 9\nset rmargin 3\nset tmargin 3\nset bmargin 4");
+plot.cmd("set title 'Still air, ΔT = 40 K: R_{th} vs fin spacing' font ',11'");
+plot.cmd("set border 3 lw 1.2 lc rgb '#334155'");
+plot.cmd("set xtics nomirror font ',10'");
+plot.cmd("set ytics nomirror font ',10'");
+plot.cmd("set xlabel 'Fin spacing S (mm)' font ',11'");
+plot.cmd("set ylabel 'Thermal resistance R_{th} (K/W)' font ',11'");
+plot.cmd("set logscale y");
+plot.cmd("set xrange [0:19]");
+plot.cmd("set yrange [3:300]");
+plot.cmd("set ytics (3, 5, 10, 20, 50, 100)");
+plot.cmd("set grid xtics ytics lc rgb '#e2e8f0'");
+plot.cmd("set key top right font ',10' opaque box lc rgb '#cbd5e1'");
+plot.cmd("set arrow 1 from " + str(s_opt) + ", 3 to " + str(s_opt) + ", 120 nohead dt 2 lw 1.6 lc rgb '#b45309'");
+plot.cmd("set label 1 'Bar-Cohen S_{opt} = " + plot.str("sprintf('%.1f', " + str(s_opt) + ")") + " mm' at " + str(s_opt + 0.4) + ", 90 left font ',10' tc rgb '#b45309'");
+plot.cmd("set label 2 'too many fins:\nchannels choke the flow' at 3.2, 40 left font ',9.5' tc rgb '#475569'");
+plot.cmd("set label 3 'too few fins:\nnot enough area' at 11.0, 14.0 left font ',9.5' tc rgb '#475569'");
+plot.cmd("plot $SWEEP using 2:3 with linespoints lw 2.6 pt 7 ps 1.0 lc rgb '#1d4ed8' title 'R_{th}(S), 4–20 fins', $SWEEP using 2:($1 == 8 ? $3 : 1/0) with points pt 6 ps 3.0 lw 2.5 lc rgb '#dc2626' title 'best: 8 fins, 4.7 K/W', $SWEEP using 2:3:(sprintf('%d', $1)) every 2 with labels offset 1.4,0.3 font ',8.5' tc rgb '#64748b' notitle");
+plot.cmd("unset multiplot");
+plot.close();
+end _lmcode_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("wrote images/heat-sink.png");
