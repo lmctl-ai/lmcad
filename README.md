@@ -100,13 +100,13 @@ scene.fit_camera(42.0, 1.2);
 scene.render_png("images/box.png", 640, 480);
 end _lmcode_
 savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);   # run with the same host; system() defaults to a 60 s limit
+r = system(concat(dsl_cli(p), ["--lmcode", out]), 600000);   # run with the same host; system() defaults to a 60 s limit
 if (r.code != 0) { println(r.stderr + r.stdout); }
 assert(r.code == 0);
 println("wrote images/box.png");
 ```
 
-`lmcad --dsl-schema` lists the whole API: primitives (box, sphere, cylinder, `tube_between`), sketches revolved or extruded into solids, booleans (`union`, `cut`, `intersect`), `fillet`/`chamfer`/`hollow`, B-rep `volume()` and bounds, lights, cameras, supersampling, PNG/PPM/APNG renders and STL/OBJ export. More basic examples (still life, STL export, range loop, keyframe tween, turntable, section view, water molecule) are listed in [examples/README.md](examples/README.md), each with its autorun line. Guides: [tool book](https://lmctl.com/tools/lmcad/) · [get started](https://lmctl.com/tools/lmcad/get_started.html) · [API guide](https://lmctl.com/tools/lmcad/guide.html) · [releases](https://github.com/lmctl-ai/lmcad/releases).
+`lmcad --lmcode-schema` lists the whole API: primitives (box, sphere, cylinder, `tube_between`), sketches revolved or extruded into solids, booleans (`union`, `cut`, `intersect`), `fillet`/`chamfer`/`hollow`, B-rep `volume()` and bounds, lights, cameras, supersampling, PNG/PPM/APNG renders and STL/OBJ export. More basic examples (still life, STL export, range loop, keyframe tween, turntable, section view, water molecule) are listed in [examples/README.md](examples/README.md), each with its autorun line. Guides: [tool book](https://lmctl.com/tools/lmcad/) · [get started](https://lmctl.com/tools/lmcad/get_started.html) · [API guide](https://lmctl.com/tools/lmcad/guide.html) · [releases](https://github.com/lmctl-ai/lmcad/releases).
 
 ## Limits (honest)
 
@@ -119,16 +119,16 @@ println("wrote images/box.png");
 ## CLI
 
 ```sh
-private implementation detail --dsl-schema
-private implementation detail --dsl-schema --json > /tmp/lmcad-schema.json
+private implementation detail --lmcode-schema
+private implementation detail --lmcode-schema --json > /tmp/lmcad-schema.json
 cmp private implementation detail /tmp/lmcad-schema.json
-private implementation detail --dsl-signatures
-lmscript --dsl-signatures private implementation detail
+private implementation detail --lmcode-signatures
+lmscript --lmcode-signatures private implementation detail
 PATH="$PWD/build:$PATH" lmscript examples/still-life.lms   # cli="lmcad" resolves to the build
-private implementation detail --dsl private implementation detail                      # rerun the saved bytecode
+private implementation detail --lmcode private implementation detail                      # rerun the saved bytecode
 ```
 
-`--version` prints `lmcad X.Y.Z` (the CMake project version; a release tag must be `vX.Y.Z`, which CI checks, because lmscript `install="github:lmctl-ai/lmcad@latest"` compares the two). `--dsl-schema` prints a compact registry-derived summary with context first, then free functions and members grouped by type. `--dsl-schema --json` prints the embedded schema bytes exactly. `--dsl-signatures` prints the host registry's canonical signature list, which must match the compiler's output for the schema. `--dsl FILE [FILE ...]` executes bytecode files in argument order, using one embedded schema and the same host context for every block. Each file has fresh VM locals, while shapes, materials, camera and other host state persist across files. Execution stops on the first load or runtime error (exit 3); previous outputs and any output already written by the failing block remain. Each completed block prints one success JSON line, followed by an error JSON line if a later block fails. All command-line arguments are validated before execution (invalid syntax exits 2). The old `--dsl-schema FILE` input form is removed.
+`--version` prints `lmcad X.Y.Z` (the CMake project version; a release tag must be `vX.Y.Z`, which CI checks, because lmscript `install="github:lmctl-ai/lmcad@latest"` compares the two). `--lmcode-schema` prints a compact registry-derived summary with context first, then free functions and members grouped by type. `--lmcode-schema --json` prints the embedded schema bytes exactly. `--lmcode-signatures` prints the host registry's canonical signature list, which must match the compiler's output for the schema. `--lmcode FILE [FILE ...]` executes bytecode files in argument order, using one embedded schema and the same host context for every block. Each file has fresh VM locals, while shapes, materials, camera and other host state persist across files. Execution stops on the first load or runtime error (exit 3); previous outputs and any output already written by the failing block remain. Each completed block prints one success JSON line, followed by an error JSON line if a later block fails. All command-line arguments are validated before execution (invalid syntax exits 2). The old `--lmcode-schema FILE` input form is removed.
 
 `scene.animation(path, w, h, fps)` writes APNG; the gear-train and turntable examples convert theirs to GIF with ffmpeg. PNG and APNG use deterministic LZ77/fixed-Huffman DEFLATE (stored blocks for incompressible data). APNG uses exact rational frame delays (integer FPS from 1 through 240) and loops forever; `lmcad-apng-extract` extracts a zero-based full frame to PNG. Host limits are 240 frames, 64 million total frame pixels, and 16,777,216 pixels per frame. Frames stream to a temporary file in the destination directory; memory does not grow with frame count. `finish()` atomically replaces the destination. Omitting it discards the temporary animation when the host exits; an empty finish, second finish, or add after finish is an error. Write failures preserve the previous destination and remove temporary output. Frame-count and cumulative-pixel checks precede rendering; the renderer also checks the supersampled dimensions and pixel count before allocating. A 36-frame 1920x1080 animation exceeds the cumulative limit (74,649,600 pixels); at that resolution at most 30 frames fit, with supersampling at most 2. `fit_camera(fov, margin)` snapshots visible bounds and adapts the fitted distance to each render’s aspect ratio; FOV is vertical and margin must be at least 1. Explicit camera `look_at` or `clipping` calls disable automatic fitting. Ambient must be finite and nonnegative; values above 1 clamp to full ambient illumination. Scene settings provide key and fill lights, ambient level, and bounded 1..8 supersampling (default 2). OCCT tessellation uses analytic surface normals, blends them across nearly tangent face seams, and keeps sharper B-rep creases crisp. The default mesh uses 0.05 linear deflection and 0.1-radian angular deflection. Materials support bounded Blinn-Phong highlights through `specular(strength)` and `shininess(power)`; key and fill directions are tuned for stronger face contrast. Boolean operations and solid-volume assertions use the BRep geometry.
 

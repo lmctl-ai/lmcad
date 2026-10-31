@@ -42,7 +42,7 @@ scene.render_png("images/fluidsimulation2d.png", 800, 500);
 end _lmcode_
 savedsl(p, out);
 # run the bytecode with the host it was compiled against (10 min limit; system() defaults to 60 s)
-r = system(concat(dsl_cli(p), ["--dsl", out]), 600000);
+r = system(concat(dsl_cli(p), ["--lmcode", out]), 600000);
 if (r.code != 0) { println(r.stderr + r.stdout); }
 assert(r.code == 0);
 println("wrote images/fluidsimulation2d.png");
